@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Infra Fundamentals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+
+  /* ============ TOKENS (shared family with the Day-1 mind map) ============ */
+  :root {
+    --paper: #EDF1F6;
+    --surface: #FFFFFF;
+    --surface-2: #F5F7FB;
+    --ink: #172233;
+    --muted: #58687F;
+    --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+
+    --accent: #C6912E;
+    --accent-ink: #241804;
+    --accent-soft: rgba(198,145,46,0.14);
+
+    --tag-eureka: #3E7CA6;
+    --tag-config: #4B8A5E;
+    --tag-gateway: #8A5FB0;
+    --tag-docker: #2C7A99;
+    --tag-life: #B5653A;
+
+    --code-bg: #101a2c;
+    --code-ink: #DCE6F5;
+    --code-muted: #7C8CA8;
+    --code-accent: #E7B45C;
+    --code-string: #9FCB8C;
+
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526;
+      --surface: #131F35;
+      --surface-2: #17233C;
+      --ink: #E7ECF6;
+      --muted: #93A2C0;
+      --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+
+      --accent: #E0AC50;
+      --accent-ink: #1C1200;
+      --accent-soft: rgba(224,172,80,0.14);
+
+      --tag-eureka: #85AFDD;
+      --tag-config: #8FCB9F;
+      --tag-gateway: #C6A6EA;
+      --tag-docker: #7FCBE5;
+      --tag-life: #E0A17D;
+
+      --code-bg: #0A1220;
+      --code-ink: #DCE6F5;
+      --code-muted: #6E7EA0;
+      --code-accent: #F0C572;
+      --code-string: #A9DB98;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --surface-2: #17233C;
+    --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --tag-eureka: #85AFDD; --tag-config: #8FCB9F; --tag-gateway: #C6A6EA; --tag-docker: #7FCBE5; --tag-life: #E0A17D;
+    --code-bg: #0A1220; --code-ink: #DCE6F5; --code-muted: #6E7EA0; --code-accent: #F0C572; --code-string: #A9DB98;
+  }
+
+  /* ============ BASE ============ */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,.mono { font-family: var(--font-mono); }
+  h1,h2,h3,h4 { text-wrap: balance; margin: 0; }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  /* ============ TITLE BLOCK ============ */
+  .titleblock {
+    max-width: 1180px; margin: 0 auto; padding: 40px 28px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .titleblock .kicker {
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 8px;
+  }
+  .titleblock h1 { font-size: clamp(1.6rem, 1.15rem + 1.8vw, 2.3rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1.05rem; max-width: 62ch; margin-top: 12px; }
+
+  /* ============ LAYOUT ============ */
+  .layout {
+    max-width: 1180px; margin: 0 auto; padding: 36px 28px 100px;
+    display: grid; grid-template-columns: 216px 1fr; gap: 52px; align-items: start;
+  }
+  .toc {
+    position: sticky; top: 24px;
+    display: flex; flex-direction: column; gap: 2px;
+    border-left: 2px solid var(--line);
+    padding-left: 16px;
+  }
+  .toc .toc-label { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .toc a {
+    font-family: var(--font-mono); font-size: 0.84rem; text-decoration: none; color: var(--muted);
+    padding: 6px 0; border-left: 2px solid transparent; margin-left: -18px; padding-left: 16px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .toc a:hover { color: var(--ink); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+
+  .article { min-width: 0; }
+  section { padding-bottom: 56px; margin-bottom: 56px; border-bottom: 1px dashed var(--line); scroll-margin-top: 24px; }
+  section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .section-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 4px; margin-bottom: 14px; font-weight: 600;
+  }
+  section h2 { font-size: 1.5rem; margin-bottom: 6px; }
+  section h3 { font-size: 1.08rem; margin: 30px 0 10px; color: var(--ink); }
+  section h3 .num { color: var(--muted); font-weight: 400; margin-right: 8px; }
+  .lede { color: var(--muted); font-size: 1.02rem; margin-bottom: 22px; }
+
+  #eureka .section-eyebrow { background: color-mix(in srgb, var(--tag-eureka) 16%, transparent); color: var(--tag-eureka); }
+  #config .section-eyebrow { background: color-mix(in srgb, var(--tag-config) 16%, transparent); color: var(--tag-config); }
+  #gateway .section-eyebrow { background: color-mix(in srgb, var(--tag-gateway) 16%, transparent); color: var(--tag-gateway); }
+  #docker .section-eyebrow { background: color-mix(in srgb, var(--tag-docker) 16%, transparent); color: var(--tag-docker); }
+  #lifecycle .section-eyebrow, #cheatsheet .section-eyebrow { background: color-mix(in srgb, var(--tag-life) 16%, transparent); color: var(--tag-life); }
+
+  /* ============ CODE ============ */
+  .code-wrap { overflow-x: auto; border-radius: 8px; margin: 16px 0 20px; }
+  pre.code {
+    margin: 0; padding: 16px 18px; background: var(--code-bg); color: var(--code-ink);
+    font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.6; white-space: pre;
+  }
+  pre.code .c1 { color: var(--code-muted); font-style: italic; }
+  pre.code .k { color: var(--code-accent); }
+  pre.code .s { color: var(--code-string); }
+  code.inline {
+    font-family: var(--font-mono); font-size: 0.86em; background: var(--accent-soft);
+    padding: 1px 6px; border-radius: 3px;
+  }
+  .code-caption {
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: -8px;
+  }
+
+  /* ============ CALLOUT ============ */
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0;
+  }
+  .callout .label {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; display: block; margin-bottom: 6px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ============ LISTS ============ */
+  ul.plain { margin: 0 0 16px; padding-left: 20px; }
+  ul.plain li { margin-bottom: 8px; }
+  dl.terms { margin: 0 0 20px; }
+  dl.terms > div { display: grid; grid-template-columns: 160px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  dl.terms > div:first-child { border-top: none; }
+  dl.terms dt { font-family: var(--font-mono); font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+  dl.terms dd { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  /* ============ DIAGRAM FIGURES ============ */
+  figure.diagram {
+    margin: 22px 0 26px; padding: 20px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  figure.diagram svg { width: 100%; height: auto; display: block; color: var(--ink); }
+  figure.diagram svg text { fill: currentColor; }
+  figure.diagram .accent-mark { color: var(--accent); }
+  figcaption { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); margin-top: 12px; text-align: center; }
+
+  /* ============ CHEAT SHEET TABLE ============ */
+  .cheat-table { width: 100%; border-collapse: collapse; margin: 4px 0 26px; font-size: 0.9rem; }
+  .cheat-table th { text-align: left; font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .cheat-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .cheat-table td:first-child { white-space: nowrap; }
+  .cheat-table tr:last-child td { border-bottom: none; }
+
+  footer.done {
+    max-width: 1180px; margin: 0 auto; padding: 0 28px 60px;
+    font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted);
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 24px; }
+    .toc {
+      position: sticky; top: 0; z-index: 5;
+      flex-direction: row; overflow-x: auto; white-space: nowrap;
+      border-left: none; border-bottom: 1px solid var(--line);
+      padding: 12px 0; background: var(--paper); gap: 4px;
+    }
+    .toc .toc-label { display: none; }
+    .toc a { border-left: none; border-bottom: 2px solid transparent; margin-left: 0; padding: 6px 10px; }
+    .toc a.active { border-left: none; border-bottom-color: var(--accent); }
+    dl.terms > div { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <span class="kicker">// study guide</span>
+  <h1>Vicinia — Infra Fundamentals</h1>
+  <p class="sub">Eureka, Config Server, API Gateway, and Docker Compose — explained from first principles, then traced through the exact files we wrote for Stage 0 and Stage 1.</p>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <span class="toc-label">Contents</span>
+    <a href="#big-picture">The big picture</a>
+    <a href="#eureka">Eureka (service discovery)</a>
+    <a href="#config">Config Server</a>
+    <a href="#gateway">API Gateway</a>
+    <a href="#docker">Docker &amp; Compose</a>
+    <a href="#lifecycle">Request lifecycle</a>
+    <a href="#cheatsheet">Command cheat sheet</a>
+  </nav>
+
+  <main class="article">
+
+    <!-- ============ 1. BIG PICTURE ============ -->
+    <section id="big-picture">
+      <span class="section-eyebrow">01 · orientation</span>
+      <h2>Why any of this infra exists</h2>
+      <p class="lede">Before Eureka, Config Server, or the gateway existed, "the backend" was going to be 16 independent Spring Boot applications. None of them know each other's address, none of them share configuration, and a browser can't sanely be pointed at 16 different hostnames. Stage 1 builds the three pieces of connective tissue that turn 16 separate jars into one coherent system.</p>
+
+      <dl class="terms">
+        <div><dt>discovery-server</dt><dd>The phone book. Every service registers itself here on boot and asks it "where is X right now?" instead of hardcoding an address.</dd></div>
+        <div><dt>config-server</dt><dd>The shared settings file. Instead of baking config into each service's jar, services fetch it over HTTP at startup.</dd></div>
+        <div><dt>api-gateway</dt><dd>The front door. The only service a client ever talks to directly; it forwards each request to the right place behind the scenes.</dd></div>
+      </dl>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 260" role="img" aria-label="Diagram showing api-gateway, config-server, and discovery-server as the three Stage 1 infra pieces, with a domain service registering with discovery-server, pulling config from config-server, and receiving proxied requests from api-gateway.">
+          <defs>
+            <marker id="arr1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- boxes -->
+          <rect x="20" y="110" width="120" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="80" y="138" text-anchor="middle" font-family="IBM Plex Mono" font-size="12">Client</text>
+
+          <rect x="200" y="20" width="150" height="46" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="275" y="48" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" class="accent-mark">api-gateway</text>
+
+          <rect x="200" y="196" width="150" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="275" y="224" text-anchor="middle" font-family="IBM Plex Mono" font-size="12">config-server</text>
+
+          <rect x="440" y="20" width="150" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="515" y="48" text-anchor="middle" font-family="IBM Plex Mono" font-size="12">discovery-server</text>
+
+          <rect x="440" y="196" width="150" height="46" rx="6" fill="none" stroke="currentColor" stroke-dasharray="4 3"/>
+          <text x="515" y="219" text-anchor="middle" font-family="IBM Plex Mono" font-size="12">domain service</text>
+          <text x="515" y="233" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="currentColor" opacity="0.6">(Stage 2+)</text>
+
+          <!-- client -> gateway -->
+          <line x1="140" y1="130" x2="196" y2="60" stroke="currentColor" marker-end="url(#arr1)"/>
+          <text x="150" y="90" font-family="IBM Plex Mono" font-size="10">request</text>
+
+          <!-- gateway -> config -->
+          <path d="M270 66 C 260 120, 260 150, 270 194" fill="none" stroke="currentColor" marker-end="url(#arr1)"/>
+          <text x="200" y="130" font-family="IBM Plex Mono" font-size="10">pulls config</text>
+
+          <!-- gateway <-> discovery -->
+          <line x1="350" y1="43" x2="436" y2="43" stroke="currentColor" marker-end="url(#arr1)"/>
+          <text x="358" y="35" font-family="IBM Plex Mono" font-size="10">resolves lb://SERVICE</text>
+
+          <!-- domain service -> discovery -->
+          <line x1="515" y1="192" x2="515" y2="70" stroke="currentColor" marker-end="url(#arr1)"/>
+          <text x="522" y="130" font-family="IBM Plex Mono" font-size="10">registers +<tspan x="522" dy="12">heartbeats</tspan></text>
+
+          <!-- domain service -> config -->
+          <path d="M436 219 L 354 219" fill="none" stroke="currentColor" marker-end="url(#arr1)"/>
+          <text x="360" y="212" font-family="IBM Plex Mono" font-size="10">pulls config</text>
+
+          <!-- gateway -> domain service (proxy) -->
+          <path d="M350 50 C 480 90, 560 130, 550 194" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2" marker-end="url(#arr1)"/>
+          <text x="380" y="105" font-family="IBM Plex Mono" font-size="10" class="accent-mark">proxies once resolved</text>
+        </svg>
+        <figcaption>Boot-time wiring (thin arrows) vs. a live request (thick arrow) — every service does both.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ============ 2. EUREKA ============ -->
+    <section id="eureka">
+      <span class="section-eyebrow">02 · discovery-server</span>
+      <h2>Service discovery — Eureka</h2>
+      <p class="lede">The problem Eureka solves: if <code class="inline">order-service</code> needs to call <code class="inline">inventory-service</code>, what address does it use? A hardcoded <code class="inline">http://192.168.1.14:8084</code> breaks the moment that instance restarts on a different port, moves to a different machine, or you scale to three instances of it. Eureka replaces "a fixed address" with "ask the registry, right now, who's alive."</p>
+
+      <h3><span class="num">2.1</span>Registration &amp; heartbeats</h3>
+      <p>Every service that wants to be found is a <strong>Eureka client</strong>. On startup it sends the registry one POST: "I am <code class="inline">AUTH-SERVICE</code>, I live at this host and port." From then on it sends a small <strong>heartbeat</strong> (a "renewal") every 30 seconds to say "still alive." If the registry doesn't hear a renewal within a 90-second <strong>lease</strong>, it assumes the instance is dead and evicts it from the registry.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 620 190" role="img" aria-label="Diagram of a service instance registering once with Eureka, renewing its lease every 30 seconds, and being evicted after 90 seconds of silence.">
+          <defs>
+            <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="20" y="70" width="150" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="95" y="98" text-anchor="middle" font-family="IBM Plex Mono" font-size="12">service instance</text>
+
+          <rect x="450" y="70" width="150" height="46" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="525" y="98" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" class="accent-mark">Eureka registry</text>
+
+          <line x1="170" y1="80" x2="446" y2="80" stroke="currentColor" marker-end="url(#arr2)"/>
+          <text x="310" y="72" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">register (once, on boot)</text>
+
+          <line x1="170" y1="102" x2="446" y2="102" stroke="currentColor" marker-end="url(#arr2)"/>
+          <text x="310" y="122" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">renew — every 30s</text>
+
+          <line x1="170" y1="140" x2="446" y2="140" stroke="currentColor" stroke-dasharray="4 3" marker-end="url(#arr2)" opacity="0.55"/>
+          <text x="310" y="160" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" opacity="0.75">silence &gt; 90s → evicted</text>
+        </svg>
+        <figcaption>Registration is a one-time event; staying registered is a heartbeat, not a promise.</figcaption>
+      </figure>
+
+      <h3><span class="num">2.2</span>Self-preservation mode</h3>
+      <p>Eureka has a safety switch: if it suddenly sees renewals drop across <em>many</em> instances at once, that usually means the registry's own network is having a bad moment — not that every instance actually died. <strong>Self-preservation mode</strong> stops evicting in that scenario and keeps serving the (possibly stale) registry it already has, on the theory that a stale answer is safer than telling every client "nothing exists."</p>
+      <p>We disabled it locally (<code class="inline">enable-self-preservation: false</code>) on purpose — it's a dev-speed choice, not a production one. Without it, restarting a service you're actively working on gets evicted in ~5 seconds instead of possibly lingering as a dead entry for up to 90.</p>
+
+      <h3><span class="num">2.3</span>Client-side load balancing</h3>
+      <p>Once there are multiple instances of a service registered, <em>who</em> picks which one handles a given call? Eureka itself doesn't — it just hands back the list. <strong>Spring Cloud LoadBalancer</strong>, running inside the calling service (or the gateway), picks one instance from that list, by default round-robin. This is "client-side" load balancing: no separate load-balancer process sits in the middle, the caller decides.</p>
+
+      <h3><span class="num">2.4</span>Our actual config, line by line</h3>
+      <p class="code-caption">discovery-server/src/main/resources/application.yml</p>
+      <div class="code-wrap"><pre class="code"><span class="c1"># port the registry itself listens on</span>
+server:
+  port: <span class="k">8761</span>
+
+eureka:
+  client:
+    <span class="c1"># the registry doesn't register with itself or fetch its own list</span>
+    register-with-eureka: <span class="k">false</span>
+    fetch-registry: <span class="k">false</span>
+  server:
+    <span class="c1"># dev-speed tradeoff — see 2.2 above</span>
+    enable-self-preservation: <span class="k">false</span>
+    eviction-interval-timer-in-ms: <span class="k">5000</span></pre></div>
+
+      <div class="callout">
+        <span class="label">Why register-with-eureka: false?</span>
+        <p>The discovery-server annotates itself with <code class="inline">@EnableEurekaServer</code>, which turns it into the registry — it isn't also trying to be a client of itself. Every <em>other</em> service in the system will have this flag left at its default (<code class="inline">true</code>).</p>
+      </div>
+    </section>
+
+    <!-- ============ 3. CONFIG SERVER ============ -->
+    <section id="config">
+      <span class="section-eyebrow">03 · config-server</span>
+      <h2>Centralized configuration</h2>
+      <p class="lede">The problem Config Server solves: with 16 services, "change one property" shouldn't mean "rebuild and redeploy one jar." Centralizing config also means there's exactly one place to see what's configured for the whole system, instead of 16 scattered <code class="inline">application.yml</code> files.</p>
+
+      <h3><span class="num">3.1</span>The contract</h3>
+      <p>Config Server exposes a simple REST contract: <code class="inline">GET /{application}/{profile}</code> returns a merged property set for that service and profile. "Merged" means layered, in a specific precedence — the most specific file wins:</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 560 190" role="img" aria-label="Diagram showing config precedence: application.yml as a shared base layer, overridden by a per-service file, overridden by a per-service-per-profile file, merging into the effective config a client receives.">
+          <defs>
+            <marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="20" y="120" width="230" height="34" rx="5" fill="none" stroke="currentColor"/>
+          <text x="135" y="142" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">application.yml (shared, everyone)</text>
+
+          <rect x="40" y="76" width="210" height="34" rx="5" fill="none" stroke="currentColor"/>
+          <text x="145" y="98" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">{service}.yml (per service)</text>
+
+          <rect x="60" y="32" width="190" height="34" rx="5" fill="none" stroke="currentColor"/>
+          <text x="155" y="54" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">{service}-{profile}.yml</text>
+
+          <line x1="270" y1="90" x2="360" y2="90" stroke="currentColor" marker-end="url(#arr3)"/>
+          <text x="300" y="82" font-family="IBM Plex Mono" font-size="10">merge</text>
+
+          <rect x="360" y="55" width="180" height="70" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="450" y="83" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" class="accent-mark">effective config</text>
+          <text x="450" y="100" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" opacity="0.7">most specific file wins</text>
+        </svg>
+        <figcaption>A profile-specific value overrides a service value, which overrides the shared default.</figcaption>
+      </figure>
+
+      <h3><span class="num">3.2</span>Backend types</h3>
+      <dl class="terms">
+        <div><dt>native</dt><dd>Reads files straight off a filesystem or classpath folder. Simplest possible setup, no extra moving part — what we used for the zero-cost single-VM deploy.</dd></div>
+        <div><dt>git</dt><dd>Clones an actual git repo; <code class="inline">label</code> maps to a branch or tag, so config gets full version history and rollback for free.</dd></div>
+        <div><dt>vault</dt><dd>Backed by HashiCorp Vault — for secrets specifically, not general config.</dd></div>
+      </dl>
+      <p>We chose <strong>native</strong> deliberately: one less service to run and secure, at the cost of no built-in change history. Worth revisiting if config ever needs an audit trail.</p>
+
+      <h3><span class="num">3.3</span>How a client actually pulls it</h3>
+      <p>A consuming service declares this once, and the fetch happens automatically before the rest of its own startup finishes:</p>
+      <div class="code-wrap"><pre class="code">spring:
+  config:
+    import: <span class="s">optional:configserver:http://localhost:8888</span></pre></div>
+      <p>The <code class="inline">optional:</code> prefix matters: without it, the service <em>refuses to start</em> if config-server is unreachable. With it, a missing config-server just means "start with whatever's bundled locally" — the right default while config-server itself is still young infra, not yet holding anything a service can't run without.</p>
+
+      <h3><span class="num">3.4</span>The bug we actually hit</h3>
+      <div class="callout">
+        <span class="label">Gotcha — classpath resolution</span>
+        <p>We first put the shared config in <code class="inline">config-server/config-repo/application.yml</code> — a folder sitting next to <code class="inline">src/</code>. Config Server was set to <code class="inline">search-locations: classpath:/config-repo</code>, and it came back empty. Why: Maven only puts <code class="inline">src/main/resources/</code> (and its subfolders) onto the compiled classpath. A sibling folder next to <code class="inline">src</code> is invisible to the running jar, no matter how correct its contents are. Moving it to <code class="inline">src/main/resources/config-repo/application.yml</code> fixed it immediately — same file, same content, different location relative to what actually ships.</p>
+      </div>
+      <p>This is a useful general lesson, not just a one-off fix: <strong>any</strong> <code class="inline">classpath:</code> reference in Spring config only ever sees what Maven/Gradle actually packages under the resources root.</p>
+    </section>
+
+    <!-- ============ 4. GATEWAY ============ -->
+    <section id="gateway">
+      <span class="section-eyebrow">04 · api-gateway</span>
+      <h2>The single front door</h2>
+      <p class="lede">With 16 backend services, a client (a browser, a mobile app) cannot reasonably be pointed at 16 different hostnames — and shouldn't be, since that also means auth, rate limiting, and logging would need to be reimplemented 16 times. The gateway is the one service every external client talks to; it decides where each request actually goes.</p>
+
+      <h3><span class="num">4.1</span>Three building blocks</h3>
+      <dl class="terms">
+        <div><dt>Route</dt><dd>One rule: an id, a destination <code class="inline">uri</code>, the predicates that must match, and any filters to apply.</dd></div>
+        <div><dt>Predicate</dt><dd>A condition on the incoming request — <code class="inline">Path=/api/auth/**</code>, a header, a method. All predicates on a route must match for it to apply.</dd></div>
+        <div><dt>Filter</dt><dd>Modifies the request or response — strip a path prefix, add a header, apply a circuit breaker or rate limiter. Stage 1 has none yet; Stage 2 adds a JWT filter, Stage 15 adds resilience filters.</dd></div>
+      </dl>
+
+      <h3><span class="num">4.2</span>The <code class="inline">lb://</code> scheme</h3>
+      <p>Our routes point at <code class="inline">lb://AUTH-SERVICE</code>, not a real host. <code class="inline">lb</code> tells the gateway "don't treat this as a literal address — ask the load balancer." At request time, the load balancer asks Eureka for live <code class="inline">AUTH-SERVICE</code> instances, picks one (§2.3), and the gateway proxies the request to that instance's real host:port. This is exactly why a route can be written before the service behind it exists: until <code class="inline">AUTH-SERVICE</code> registers, that route simply has nothing to resolve to, and returns a 503.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 170" role="img" aria-label="Diagram of a request entering the gateway, matching a route predicate, resolving lb://AUTH-SERVICE through Eureka, and being proxied to a live instance.">
+          <defs>
+            <marker id="arr4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="10" y="62" width="90" height="42" rx="6" fill="none" stroke="currentColor"/>
+          <text x="55" y="88" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">client</text>
+
+          <rect x="150" y="62" width="130" height="42" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="215" y="88" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" class="accent-mark">api-gateway</text>
+
+          <rect x="330" y="10" width="150" height="36" rx="5" fill="none" stroke="currentColor"/>
+          <text x="405" y="32" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">Path=/api/auth/**</text>
+
+          <rect x="330" y="118" width="150" height="36" rx="5" fill="none" stroke="currentColor"/>
+          <text x="405" y="140" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">Eureka: who's alive?</text>
+
+          <rect x="530" y="62" width="100" height="42" rx="6" fill="none" stroke="currentColor"/>
+          <text x="580" y="88" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">AUTH-SERVICE</text>
+          <text x="580" y="100" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">instance</text>
+
+          <line x1="100" y1="83" x2="146" y2="83" stroke="currentColor" marker-end="url(#arr4)"/>
+          <line x1="220" y1="60" x2="330" y2="30" stroke="currentColor" marker-end="url(#arr4)"/>
+          <text x="230" y="45" font-family="IBM Plex Mono" font-size="9">1. matches</text>
+          <line x1="245" y1="106" x2="345" y2="132" stroke="currentColor" marker-end="url(#arr4)"/>
+          <text x="255" y="122" font-family="IBM Plex Mono" font-size="9">2. resolves</text>
+          <line x1="280" y1="80" x2="527" y2="80" stroke="currentColor" class="accent-mark" stroke-width="2" marker-end="url(#arr4)"/>
+          <text x="380" y="72" font-family="IBM Plex Mono" font-size="9" class="accent-mark">3. proxies</text>
+        </svg>
+        <figcaption>Three steps per request: match the route, resolve the live instance, proxy the call.</figcaption>
+      </figure>
+
+      <h3><span class="num">4.3</span>Why reactive/non-blocking matters here specifically</h3>
+      <p>Spring Cloud Gateway runs on Spring WebFlux over Netty — event-loop, non-blocking I/O — rather than the traditional one-thread-per-request servlet model. That matters uniquely for a gateway: it sits in the hot path of <em>every single request</em> in the system and spends most of its time waiting on a downstream service to respond. A thread-per-request model would tie up an OS thread for each in-flight wait; the event loop model handles thousands of concurrent in-flight requests on a handful of threads instead.</p>
+
+      <h3><span class="num">4.4</span>Our route table (excerpt) &amp; the public-paths list</h3>
+      <p class="code-caption">api-gateway/src/main/resources/application.yml</p>
+      <div class="code-wrap"><pre class="code">spring:
+  cloud:
+    gateway:
+      routes:
+        - id: <span class="s">auth-service</span>
+          uri: <span class="s">lb://AUTH-SERVICE</span>
+          predicates:
+            - Path=<span class="s">/api/auth/**</span>
+        - id: <span class="s">catalog-service</span>
+          uri: <span class="s">lb://CATALOG-SERVICE</span>
+          predicates:
+            - Path=<span class="s">/api/catalog/**</span>
+
+<span class="c1"># not enforced yet — Stage 2's JWT filter reads this list</span>
+vicinia:
+  gateway:
+    public-paths:
+      - <span class="s">/api/auth/login</span>
+      - <span class="s">/api/catalog/**</span></pre></div>
+      <p>Deciding the public-paths list <em>now</em>, before the auth filter exists, is deliberate: it's the contract Stage 2 builds against, rather than a decision made under pressure while wiring JWT validation.</p>
+    </section>
+
+    <!-- ============ 5. DOCKER ============ -->
+    <section id="docker">
+      <span class="section-eyebrow">05 · docker-compose.infra.yml</span>
+      <h2>Docker &amp; Docker Compose</h2>
+      <p class="lede">Postgres, Redis, and Redpanda don't run as Java processes — they run as containers, defined once in <code class="inline">docker-compose.infra.yml</code> and brought up together with a single command.</p>
+
+      <h3><span class="num">5.1</span>Container vs. image vs. VM</h3>
+      <dl class="terms">
+        <div><dt>Image</dt><dd>A read-only template — filesystem layers plus metadata (what command to run, what ports to expose). Pulled from a registry like Docker Hub, or built from a Dockerfile.</dd></div>
+        <div><dt>Container</dt><dd>A running instance of an image, with its own writable layer on top. You can run many containers from one image.</dd></div>
+        <div><dt>vs. a VM</dt><dd>A container shares the host machine's kernel and isolates at the process/filesystem level; a VM virtualizes hardware and boots a full separate OS. Containers start in milliseconds precisely because there's no OS to boot.</dd></div>
+      </dl>
+
+      <h3><span class="num">5.2</span>Compose file anatomy, using our actual services</h3>
+      <p class="code-caption">docker-compose.infra.yml — postgres service</p>
+      <div class="code-wrap"><pre class="code">services:
+  postgres:
+    image: <span class="s">postgres:16-alpine</span>
+    <span class="c1"># keeps the container running across a host reboot / crash</span>
+    restart: <span class="s">unless-stopped</span>
+    environment:
+      POSTGRES_USER: <span class="s">vicinia</span>
+      POSTGRES_PASSWORD: <span class="s">vicinia</span>
+    ports:
+      - <span class="s">"5432:5432"</span>  <span class="c1"># host:container</span>
+    volumes:
+      <span class="c1"># named volume — data outlives container recreation</span>
+      - vicinia-postgres-data:/var/lib/postgresql/data
+      <span class="c1"># bind mount — runs once against an empty data dir, see 5.3</span>
+      - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [<span class="s">"CMD-SHELL"</span>, <span class="s">"pg_isready -U vicinia"</span>]
+      interval: <span class="k">5s</span></pre></div>
+
+      <dl class="terms">
+        <div><dt>ports: "5432:5432"</dt><dd>Left side is your Mac's port, right side is the port <em>inside</em> the container. They don't have to match — we kept them equal for clarity.</dd></div>
+        <div><dt>Named volume</dt><dd>Docker-managed storage that persists even if the container is deleted and recreated — this is where Postgres's actual data lives, outside the container's disposable filesystem.</dd></div>
+        <div><dt>healthcheck</dt><dd>"Container started" ≠ "Postgres is accepting connections yet." Other tooling (and a human reading <code class="inline">docker compose ps</code>) can wait for <em>healthy</em>, not just <em>running</em>.</dd></div>
+      </dl>
+
+      <h3><span class="num">5.3</span>The Postgres init-script mechanism</h3>
+      <p>The official Postgres image runs every <code class="inline">.sql</code>/<code class="inline">.sh</code> file found in <code class="inline">/docker-entrypoint-initdb.d/</code> — but only once, only the very first time it starts against a truly empty data directory. That's why <code class="inline">001-create-databases.sql</code> created all 9 logical databases on first boot. It also means: editing that file later and re-running <code class="inline">docker compose up</code> does <strong>nothing</strong>, because the volume is no longer empty. A change there only takes effect after <code class="inline">docker compose down -v</code> (which deletes the volume too).</p>
+
+      <h3><span class="num">5.4</span>Redpanda's networking flags</h3>
+      <p>This pair looks redundant but solves a real problem:</p>
+      <div class="code-wrap"><pre class="code">--kafka-addr=<span class="s">PLAINTEXT://0.0.0.0:9092</span>
+--advertise-kafka-addr=<span class="s">PLAINTEXT://redpanda:9092</span></pre></div>
+      <p><code class="inline">kafka-addr</code> is what the broker binds to <em>inside</em> its own container. <code class="inline">advertise-kafka-addr</code> is the address the broker tells connecting clients to use for all <em>future</em> requests — and that has to be <code class="inline">redpanda:9092</code> (the container's service name), because that's the only address other containers on the same Docker network can actually reach. If it advertised <code class="inline">localhost</code>, every other container would try to connect to itself and fail. This exact bind-vs-advertise split shows up in real Kafka, Redis Cluster, and most clustered systems — worth recognizing on sight.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 220" role="img" aria-label="Diagram of the Docker Compose network: a host machine with a vicinia network containing postgres, redis, and redpanda containers reachable by service name inside the network, and host-mapped ports reaching them from outside.">
+          <rect x="20" y="20" width="600" height="180" rx="10" fill="none" stroke="currentColor" opacity="0.4"/>
+          <text x="36" y="42" font-family="IBM Plex Mono" font-size="10" opacity="0.6">your Mac (host)</text>
+
+          <rect x="60" y="60" width="480" height="120" rx="8" fill="none" stroke="currentColor" stroke-dasharray="4 3"/>
+          <text x="76" y="80" font-family="IBM Plex Mono" font-size="10">docker network: vicinia_default</text>
+
+          <rect x="90" y="100" width="120" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="150" y="120" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">postgres</text>
+          <text x="150" y="133" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">:5432</text>
+
+          <rect x="255" y="100" width="120" height="46" rx="6" fill="none" stroke="currentColor"/>
+          <text x="315" y="120" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">redis</text>
+          <text x="315" y="133" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">:6379</text>
+
+          <rect x="420" y="100" width="120" height="46" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="480" y="120" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" class="accent-mark">redpanda</text>
+          <text x="480" y="133" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.7" class="accent-mark">advertises redpanda:9092</text>
+
+          <text x="300" y="196" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" opacity="0.6">containers reach each other by service name — no ports: entry needed between them</text>
+        </svg>
+        <figcaption>Inside the network, service names are hostnames. <code class="inline">ports:</code> in the compose file is only what's exposed to the host.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ============ 6. LIFECYCLE ============ -->
+    <section id="lifecycle">
+      <span class="section-eyebrow">06 · putting it together</span>
+      <h2>A day in the life of a request</h2>
+      <p class="lede">Two different sequences, both worth being able to narrate: what happens at <strong>boot</strong>, and what happens per <strong>request</strong> once a real domain service exists behind the gateway.</p>
+
+      <h3><span class="num">6.1</span>Boot order</h3>
+      <ul class="plain">
+        <li><strong>discovery-server</strong> starts first — nothing depends on it being populated, it just needs to be reachable.</li>
+        <li><strong>config-server</strong> starts — reads <code class="inline">config-repo/</code> off its own classpath, doesn't need discovery-server yet.</li>
+        <li><strong>api-gateway</strong> starts — pulls shared config from config-server (optional), then registers itself with discovery-server.</li>
+        <li>Any future domain service repeats the gateway's pattern: pull config, then register.</li>
+      </ul>
+
+      <h3><span class="num">6.2</span>Per-request flow (once AUTH-SERVICE exists)</h3>
+      <ul class="plain">
+        <li>Client calls <code class="inline">POST /api/auth/login</code> on the gateway's public address.</li>
+        <li>Gateway matches the <code class="inline">Path=/api/auth/**</code> predicate → route <code class="inline">auth-service</code>.</li>
+        <li>Gateway's load balancer asks the Eureka client for live <code class="inline">AUTH-SERVICE</code> instances, picks one.</li>
+        <li>Gateway proxies the request to that instance's real host:port; the response flows back through the gateway to the client.</li>
+      </ul>
+      <p>Notice discovery-server and config-server never sit in the request's hot path — both only matter at boot (or on a config refresh). That's intentional: the fewer services a live request depends on, the fewer ways it can fail.</p>
+    </section>
+
+    <!-- ============ 7. CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <span class="section-eyebrow">07 · reference</span>
+      <h2>Command cheat sheet</h2>
+      <p class="lede">Every command actually run today, for quick recall.</p>
+
+      <table class="cheat-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">mvn validate</code></td><td>Checks the POM resolves (dependency management, BOM imports) without compiling anything.</td></tr>
+          <tr><td><code class="inline">mvn clean install -DskipTests</code></td><td>Builds every module and installs the jars into the local Maven repo, skipping tests.</td></tr>
+          <tr><td><code class="inline">mvn spring-boot:run</code></td><td>Runs a single module as a live Spring Boot app, from inside its own directory.</td></tr>
+          <tr><td><code class="inline">docker compose -f docker-compose.infra.yml up -d</code></td><td>Starts Postgres/Redis/Redpanda in the background.</td></tr>
+          <tr><td><code class="inline">docker compose -f docker-compose.infra.yml ps</code></td><td>Shows container status, including healthcheck state.</td></tr>
+          <tr><td><code class="inline">docker compose -f docker-compose.infra.yml down</code></td><td>Stops and removes the containers; named volumes (the data) survive.</td></tr>
+          <tr><td><code class="inline">docker compose ... down -v</code></td><td>Same, but also deletes the volumes — the only way to make Postgres re-run its init scripts.</td></tr>
+          <tr><td><code class="inline">curl localhost:8761/eureka/apps</code></td><td>Raw registry contents — what's currently registered.</td></tr>
+          <tr><td><code class="inline">curl localhost:8888/api-gateway/default</code></td><td>What config-server would hand api-gateway right now.</td></tr>
+          <tr><td><code class="inline">curl localhost:PORT/actuator/health</code></td><td>Liveness/readiness for any Spring Boot service exposing Actuator.</td></tr>
+          <tr><td><code class="inline">gh auth login</code></td><td>Authenticates the GitHub CLI via device code.</td></tr>
+          <tr><td><code class="inline">gh repo create NAME --private --source=. --remote=origin</code></td><td>Creates a GitHub repo from the current directory and wires it as <code class="inline">origin</code>.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<footer class="done mono">vicinia · study guide · stage 0–1 · 2026-08-20</footer>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function (l) { return document.querySelector(l.getAttribute('href')); });
+
+  function setActive(id) {
+    links.forEach(function (l) {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { if (s) observer.observe(s); });
+  }
+})();
+</script>
+
+</body>
+</html>
