@@ -19,6 +19,16 @@ frontend/   React apps (customer, merchant, delivery, admin)
 docs/       Architecture, deployment, build tracker, ADRs
 ```
 
+## Local Dev
+
+```
+docker compose -f docker-compose.infra.yml up -d   # Postgres, Redis, Redpanda
+cd backend && mvn clean install -DskipTests
+cd discovery-server && mvn spring-boot:run   # :8761
+cd config-server && mvn spring-boot:run      # :8888
+cd api-gateway && mvn spring-boot:run        # :8080
+```
+
 ## Status
 
-Stage 0 (foundations) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 1 (infra skeleton) — see `docs/BUILD_TRACKER.md` for current progress.

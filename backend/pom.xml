@@ -29,11 +29,14 @@
 
     <!--
         Modules are added one at a time as each service is scaffolded per
-        BUILD_TRACKER.md's stage order (config-server / discovery-server /
-        api-gateway in Stage 1, auth-service / user-service in Stage 2, etc.).
-        Intentionally empty at Stage 0.
+        BUILD_TRACKER.md's stage order. Stage 1: infra skeleton. Stage 2
+        (auth-service / user-service) onward adds one module per stage.
     -->
-    <modules/>
+    <modules>
+        <module>config-server</module>
+        <module>discovery-server</module>
+        <module>api-gateway</module>
+    </modules>
 
     <dependencyManagement>
         <dependencies>

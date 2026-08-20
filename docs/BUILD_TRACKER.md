@@ -88,11 +88,11 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - **Done when:** repo exists, docs committed, `mvn validate` runs clean on an empty parent POM.
 
 ### Stage 1 — Infra Skeleton
-- [ ] `config-server` — serves shared `application.yml` + per-service overrides
-- [ ] `discovery-server` (Eureka)
-- [ ] `api-gateway` — routes table for all 13 domain services, public-path list
-- [ ] `docker-compose.infra.yml` — Redis, Redpanda (single-node), Postgres
-- **Done when:** gateway + eureka + config all show UP on `/actuator/health`, gateway dashboard shows itself registered.
+- [x] `config-server` — serves shared `application.yml` + per-service overrides
+- [x] `discovery-server` (Eureka)
+- [x] `api-gateway` — routes table for all 13 domain services, public-path list
+- [x] `docker-compose.infra.yml` — Redis, Redpanda (single-node), Postgres
+- **Done when:** gateway + eureka + config all show UP on `/actuator/health`, gateway dashboard shows itself registered. ✅ Verified locally: all three services report `UP`, api-gateway registered in Eureka as `API-GATEWAY`, config-server serves the shared config to it, and Postgres/Redis/Redpanda are all healthy with the 9 logical databases created.
 
 ### Stage 2 — Auth & User
 - [ ] `auth-service`: signup, login, refresh, logout, forgot/reset password

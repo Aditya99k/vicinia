@@ -1,0 +1,97 @@
+# Local/dev infra for Vicinia — Redis, Redpanda (Kafka-protocol-compatible),
+# and Postgres. Mirrors what DEPLOYMENT.md self-hosts on the Oracle VM in
+# production; MongoDB is deliberately NOT here — it's Atlas M0 (managed)
+# even locally, see DEPLOYMENT.md §3.
+#
+# Usage: docker compose -f docker-compose.infra.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vicinia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vicinia
+      POSTGRES_PASSWORD: vicinia
+      POSTGRES_DB: vicinia
+    ports:
+      - "5432:5432"
+    volumes:
+      - vicinia-postgres-data:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vicinia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vicinia-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - vicinia-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vicinia-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "9191:8081"
+    depends_on:
+      - redis
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    container_name: vicinia-redpanda
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=500M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr=PLAINTEXT://0.0.0.0:8082
+      - --advertise-pandaproxy-addr=PLAINTEXT://redpanda:8082
+      - --schema-registry-addr=PLAINTEXT://0.0.0.0:8081
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+    volumes:
+      - vicinia-redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: vicinia-redpanda-console
+    restart: unless-stopped
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "9093:8080"
+    depends_on:
+      - redpanda
+
+volumes:
+  vicinia-postgres-data:
+  vicinia-redis-data:
+  vicinia-redpanda-data:

@@ -1,0 +1,20 @@
+# Shared config served to every service that imports from config-server
+# (spring.config.import: optional:configserver:...). Per-service overrides
+# go in {spring.application.name}.yml alongside this file, added as each
+# service is scaffolded per BUILD_TRACKER.md's stage order.
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

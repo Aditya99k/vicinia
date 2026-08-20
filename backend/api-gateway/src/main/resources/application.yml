@@ -1,0 +1,98 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        # Skeleton routes for all 13 domain services (Stage 1 — no filters,
+        # no auth/rate-limiting yet, added in Stage 2 and Stage 15).
+        # lb:// resolves the service ID via Eureka once each service exists
+        # and registers under this exact spring.application.name.
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth/**
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/users/**
+        - id: merchant-service
+          uri: lb://MERCHANT-SERVICE
+          predicates:
+            - Path=/api/merchants/**
+        - id: catalog-service
+          uri: lb://CATALOG-SERVICE
+          predicates:
+            - Path=/api/catalog/**
+        - id: inventory-service
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/inventory/**
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/cart/**
+        - id: coupon-service
+          uri: lb://COUPON-SERVICE
+          predicates:
+            - Path=/api/coupons/**
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/orders/**
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/payments/**
+        - id: delivery-service
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/delivery/**
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+        - id: review-service
+          uri: lb://REVIEW-SERVICE
+          predicates:
+            - Path=/api/reviews/**
+        - id: settlement-service
+          uri: lb://SETTLEMENT-SERVICE
+          predicates:
+            - Path=/api/settlements/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# Paths that do NOT require a validated JWT once the auth filter is added
+# in Stage 2 (ARCHITECTURE.md §14 — every other route trusts X-User-Id
+# injected by the gateway from a validated token, never a client-supplied one).
+vicinia:
+  gateway:
+    public-paths:
+      - /api/auth/signup
+      - /api/auth/login
+      - /api/auth/refresh
+      - /api/catalog/**
+      - /api/merchants/nearby
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
