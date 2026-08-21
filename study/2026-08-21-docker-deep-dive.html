@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Docker Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+
+  /* ============ TOKENS (same family as the other study docs) ============ */
+  :root {
+    --paper: #EDF1F6;
+    --surface: #FFFFFF;
+    --surface-2: #F5F7FB;
+    --ink: #172233;
+    --muted: #58687F;
+    --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+
+    --accent: #C6912E;
+    --accent-ink: #241804;
+    --accent-soft: rgba(198,145,46,0.14);
+
+    --tag-fund: #3E7CA6;
+    --tag-proj: #4B8A5E;
+    --tag-adv: #B5653A;
+    --tag-ref: #8A5FB0;
+
+    --code-bg: #101a2c;
+    --code-ink: #DCE6F5;
+    --code-muted: #7C8CA8;
+    --code-accent: #E7B45C;
+    --code-string: #9FCB8C;
+
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --surface-2: #17233C;
+      --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --tag-fund: #85AFDD; --tag-proj: #8FCB9F; --tag-adv: #E0A17D; --tag-ref: #C6A6EA;
+      --code-bg: #0A1220; --code-ink: #DCE6F5; --code-muted: #6E7EA0; --code-accent: #F0C572; --code-string: #A9DB98;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --surface-2: #17233C;
+    --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --tag-fund: #85AFDD; --tag-proj: #8FCB9F; --tag-adv: #E0A17D; --tag-ref: #C6A6EA;
+    --code-bg: #0A1220; --code-ink: #DCE6F5; --code-muted: #6E7EA0; --code-accent: #F0C572; --code-string: #A9DB98;
+  }
+
+  /* ============ BASE ============ */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,.mono { font-family: var(--font-mono); }
+  h1,h2,h3,h4 { text-wrap: balance; margin: 0; }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  /* ============ TITLE BLOCK ============ */
+  .titleblock { max-width: 1180px; margin: 0 auto; padding: 40px 28px 22px; border-bottom: 1px solid var(--line); }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 8px; }
+  .titleblock h1 { font-size: clamp(1.6rem, 1.15rem + 1.8vw, 2.3rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1.05rem; max-width: 64ch; margin-top: 12px; }
+
+  /* ============ LAYOUT ============ */
+  .layout { max-width: 1180px; margin: 0 auto; padding: 36px 28px 100px; display: grid; grid-template-columns: 232px 1fr; gap: 52px; align-items: start; }
+  .toc { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 2px; border-left: 2px solid var(--line); padding-left: 16px; }
+  .toc .toc-group { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+  .toc .toc-group:first-child { margin-top: 0; }
+  .toc a { font-family: var(--font-mono); font-size: 0.82rem; text-decoration: none; color: var(--muted); padding: 5px 0; border-left: 2px solid transparent; margin-left: -18px; padding-left: 16px; transition: color 0.15s ease, border-color 0.15s ease; }
+  .toc a:hover { color: var(--ink); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+
+  .article { min-width: 0; }
+  section { padding-bottom: 56px; margin-bottom: 56px; border-bottom: 1px dashed var(--line); scroll-margin-top: 24px; }
+  section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .section-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 9px; border-radius: 4px; margin-bottom: 14px; font-weight: 600; }
+  section h2 { font-size: 1.5rem; margin-bottom: 6px; }
+  section h3 { font-size: 1.08rem; margin: 30px 0 10px; color: var(--ink); }
+  section h3 .num { color: var(--muted); font-weight: 400; margin-right: 8px; }
+  .lede { color: var(--muted); font-size: 1.02rem; margin-bottom: 22px; }
+
+  .fund .section-eyebrow { background: color-mix(in srgb, var(--tag-fund) 16%, transparent); color: var(--tag-fund); }
+  .proj .section-eyebrow { background: color-mix(in srgb, var(--tag-proj) 16%, transparent); color: var(--tag-proj); }
+  .adv .section-eyebrow { background: color-mix(in srgb, var(--tag-adv) 16%, transparent); color: var(--tag-adv); }
+  .ref .section-eyebrow { background: color-mix(in srgb, var(--tag-ref) 16%, transparent); color: var(--tag-ref); }
+
+  /* ============ CODE ============ */
+  .code-wrap { overflow-x: auto; border-radius: 8px; margin: 16px 0 20px; }
+  pre.code { margin: 0; padding: 16px 18px; background: var(--code-bg); color: var(--code-ink); font-family: var(--font-mono); font-size: 0.83rem; line-height: 1.6; white-space: pre; }
+  pre.code .c1 { color: var(--code-muted); font-style: italic; }
+  pre.code .k { color: var(--code-accent); }
+  pre.code .s { color: var(--code-string); }
+  code.inline { font-family: var(--font-mono); font-size: 0.86em; background: var(--accent-soft); padding: 1px 6px; border-radius: 3px; }
+  .code-caption { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: -8px; }
+
+  /* ============ CALLOUT ============ */
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+  .callout .label { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; display: block; margin-bottom: 6px; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ============ LISTS / TERMS ============ */
+  ul.plain { margin: 0 0 16px; padding-left: 20px; }
+  ul.plain li { margin-bottom: 8px; }
+  dl.terms { margin: 0 0 20px; }
+  dl.terms > div { display: grid; grid-template-columns: 200px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  dl.terms > div:first-child { border-top: none; }
+  dl.terms dt { font-family: var(--font-mono); font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+  dl.terms dd { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  /* ============ DIAGRAM FIGURES ============ */
+  figure.diagram { margin: 22px 0 26px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; color: var(--ink); }
+  figure.diagram svg text { fill: currentColor; }
+  figure.diagram .accent-mark { color: var(--accent); }
+  figcaption { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); margin-top: 12px; text-align: center; }
+
+  /* ============ TABLES ============ */
+  .cheat-table { width: 100%; border-collapse: collapse; margin: 4px 0 26px; font-size: 0.9rem; }
+  .cheat-table th { text-align: left; font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .cheat-table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .cheat-table td:first-child { white-space: nowrap; }
+  .cheat-table tr:last-child td { border-bottom: none; }
+
+  footer.done { max-width: 1180px; margin: 0 auto; padding: 0 28px 60px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 24px; }
+    .toc { position: sticky; top: 0; z-index: 5; flex-direction: row; overflow-x: auto; white-space: nowrap; border-left: none; border-bottom: 1px solid var(--line); padding: 12px 0; background: var(--paper); gap: 4px; }
+    .toc .toc-group { display: none; }
+    .toc a { border-left: none; border-bottom: 2px solid transparent; margin-left: 0; padding: 6px 10px; }
+    .toc a.active { border-left: none; border-bottom-color: var(--accent); }
+    dl.terms > div { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <span class="kicker">// study guide</span>
+  <h1>Vicinia — Docker Deep Dive</h1>
+  <p class="sub">Containers and images from zero, up through exactly how Vicinia's own <code>docker-compose.infra.yml</code> works, a real bug we hit, where Docker goes next for this project — and a section on why <code>target/</code>, <code>logs/</code>, <code>.pids/</code>, and <code>.idea/</code> never get committed.</p>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <span class="toc-group">Fundamentals</span>
+    <a href="#containers-vs-vms">Containers vs. VMs</a>
+    <a href="#images-layers">Images, layers, containers</a>
+    <a href="#toolchain">The Docker toolchain</a>
+    <a href="#compose">Docker Compose</a>
+    <span class="toc-group">In This Project</span>
+    <a href="#project">How Vicinia uses Docker</a>
+    <a href="#networking">Networking</a>
+    <a href="#volumes">Volumes</a>
+    <a href="#healthchecks">Healthchecks</a>
+    <span class="toc-group">Advanced</span>
+    <a href="#debugging">A real bug, explained</a>
+    <a href="#roadmap">Where Docker goes next</a>
+    <span class="toc-group">Reference</span>
+    <a href="#cheatsheet">Command cheat sheet</a>
+    <a href="#gitignore">What never gets committed</a>
+  </nav>
+
+  <main class="article">
+
+    <!-- ============ 1. CONTAINERS VS VMs ============ -->
+    <section id="containers-vs-vms" class="fund">
+      <span class="section-eyebrow">01 · fundamentals</span>
+      <h2>Containers vs. virtual machines, from zero</h2>
+      <p class="lede">The problem both solve: "run this software reliably, regardless of what's already installed on the machine it lands on." They solve it very differently.</p>
+
+      <p>A <strong>virtual machine</strong> emulates an entire computer — virtual CPU, virtual disk, virtual network card — and boots a complete, separate operating system on top of that fake hardware. Three VMs on one laptop means three full operating systems running simultaneously, each with its own kernel, each using gigabytes of disk and needing a minute or more to boot.</p>
+
+      <p>A <strong>container</strong> doesn't emulate hardware or boot a separate OS at all. It shares the host machine's existing kernel, and uses two Linux kernel features — <em>namespaces</em> (make a process think it's the only thing running, with its own filesystem/network/process-list view) and <em>cgroups</em> (limit how much CPU/memory it can use) — to create the <em>illusion</em> of isolation without the cost of a separate OS. Three containers on one machine share one kernel, start in a couple of seconds, and each typically uses megabytes, not gigabytes.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 260" role="img" aria-label="Diagram comparing a virtual machine stack, which runs a full guest operating system per app on top of a hypervisor, against a container stack, where multiple containers share one host operating system kernel via the Docker Engine.">
+          <text x="150" y="24" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="600">Virtual Machines</text>
+          <rect x="20" y="180" width="260" height="30" fill="none" stroke="currentColor"/>
+          <text x="150" y="199" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">Host hardware</text>
+          <rect x="20" y="150" width="260" height="26" fill="none" stroke="currentColor"/>
+          <text x="150" y="167" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">Hypervisor</text>
+          <g>
+            <rect x="26" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="64" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">Guest OS</text>
+            <text x="64" y="112" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App A</text>
+            <rect x="112" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="150" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">Guest OS</text>
+            <text x="150" y="112" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App B</text>
+            <rect x="198" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="236" y="80" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">Guest OS</text>
+            <text x="236" y="112" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App C</text>
+          </g>
+
+          <text x="470" y="24" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="600" class="accent-mark">Containers</text>
+          <rect x="340" y="180" width="260" height="30" fill="none" stroke="currentColor"/>
+          <text x="470" y="199" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">Host hardware</text>
+          <rect x="340" y="150" width="260" height="26" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="470" y="167" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" class="accent-mark">Host OS kernel + Docker Engine</text>
+          <g>
+            <rect x="346" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="384" y="107" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App A</text>
+            <rect x="432" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="470" y="107" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App B</text>
+            <rect x="518" y="60" width="76" height="84" fill="none" stroke="currentColor"/>
+            <text x="556" y="107" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">App C</text>
+          </g>
+          <text x="470" y="232" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" opacity="0.65">no per-app guest OS — one shared kernel</text>
+        </svg>
+        <figcaption>Same three apps, isolated — but a VM pays for a whole extra OS per app; a container doesn't.</figcaption>
+      </figure>
+
+      <div class="callout">
+        <span class="label">On a Mac specifically</span>
+        <p>Docker containers need a Linux kernel underneath them, and macOS's kernel (Darwin) isn't Linux. That's exactly why <strong>Docker Desktop</strong> exists as an app on Mac: it quietly runs one lightweight Linux virtual machine in the background, and every container you run actually runs inside that one VM, sharing its kernel. This is also why <code>start-infra.sh</code> has to <code>open -a Docker</code> and wait for it — "Docker" on Mac genuinely means "boot that background Linux VM first."</p>
+      </div>
+    </section>
+
+    <!-- ============ 2. IMAGES, LAYERS, CONTAINERS ============ -->
+    <section id="images-layers" class="fund">
+      <span class="section-eyebrow">02 · fundamentals</span>
+      <h2>Images, layers, and containers</h2>
+      <p class="lede">Three words that get used almost interchangeably in casual conversation, but mean precisely different things.</p>
+
+      <dl class="terms">
+        <div><dt>Image</dt><dd>A read-only template — a filesystem plus metadata (what command to run, what ports it expects) — either pulled pre-built from a registry like Docker Hub, or built locally from a <code>Dockerfile</code>.</dd></div>
+        <div><dt>Dockerfile</dt><dd>A text file of instructions (<code>FROM</code>, <code>COPY</code>, <code>RUN</code>, ...) that describes how to build an image, step by step.</dd></div>
+        <div><dt>Layer</dt><dd>Each Dockerfile instruction produces one immutable, cacheable layer. An image is really just a stack of these layers.</dd></div>
+        <div><dt>Container</dt><dd>A <em>running instance</em> of an image, with one thin writable layer added on top for anything the running process changes.</dd></div>
+      </dl>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 560 220" role="img" aria-label="Diagram showing a Dockerfile's instructions stacking into read-only image layers, with one writable container layer added on top when the image actually runs.">
+          <defs>
+            <marker id="darr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <text x="120" y="20" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="600">Dockerfile</text>
+          <rect x="40" y="34" width="160" height="24" fill="none" stroke="currentColor"/>
+          <text x="120" y="50" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">FROM eclipse-temurin:21</text>
+          <rect x="40" y="62" width="160" height="24" fill="none" stroke="currentColor"/>
+          <text x="120" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">COPY target/app.jar .</text>
+          <rect x="40" y="90" width="160" height="24" fill="none" stroke="currentColor"/>
+          <text x="120" y="106" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">ENTRYPOINT [java,-jar]</text>
+
+          <line x1="200" y1="70" x2="290" y2="70" stroke="currentColor" marker-end="url(#darr)"/>
+          <text x="245" y="62" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">builds</text>
+
+          <text x="400" y="20" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="600">Image = stacked layers</text>
+          <rect x="320" y="34" width="160" height="22" fill="none" stroke="currentColor"/>
+          <text x="400" y="49" text-anchor="middle" font-family="IBM Plex Mono" font-size="8">layer: base JRE</text>
+          <rect x="320" y="58" width="160" height="22" fill="none" stroke="currentColor"/>
+          <text x="400" y="73" text-anchor="middle" font-family="IBM Plex Mono" font-size="8">layer: app.jar copied in</text>
+          <rect x="320" y="82" width="160" height="22" fill="none" stroke="currentColor"/>
+          <text x="400" y="97" text-anchor="middle" font-family="IBM Plex Mono" font-size="8">layer: entrypoint config</text>
+
+          <line x1="400" y1="110" x2="400" y2="150" stroke="currentColor" marker-end="url(#darr)"/>
+          <text x="440" y="132" font-family="IBM Plex Mono" font-size="9">docker run</text>
+
+          <rect x="320" y="152" width="160" height="24" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2" stroke-dasharray="4 3"/>
+          <text x="400" y="168" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" class="accent-mark">+ writable container layer</text>
+          <text x="400" y="196" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.65">= a running container</text>
+        </svg>
+        <figcaption>Layers below the dashed line are shared read-only image; only the top layer is unique to this running container.</figcaption>
+      </figure>
+
+      <p>Layers are why Docker builds are usually fast on the second try: if only your source code changed, Docker reuses every cached layer up to the first instruction that actually changed, and only rebuilds from there down. This is also why Dockerfiles conventionally put rarely-changing steps (installing dependencies) before frequently-changing ones (copying your own source code) — so an edit to your code doesn't invalidate the expensive dependency-install layer.</p>
+
+      <div class="callout">
+        <span class="label">Where Vicinia stands right now</span>
+        <p>We haven't written a <code>Dockerfile</code> yet. <code>docker-compose.infra.yml</code> only pulls <em>pre-built</em> images (Postgres, Redis, Redpanda, their consoles) — none of our own Java code is containerized yet. Every Spring Boot service still runs directly on the host via <code>mvn spring-boot:run</code> (see <code>start-infra.sh</code>). Writing a <code>Dockerfile</code> per service is Stage 19 — see §10.</p>
+      </div>
+    </section>
+
+    <!-- ============ 3. TOOLCHAIN ============ -->
+    <section id="toolchain" class="fund">
+      <span class="section-eyebrow">03 · fundamentals</span>
+      <h2>The Docker toolchain — four names, four different things</h2>
+
+      <dl class="terms">
+        <div><dt>Docker Engine</dt><dd>The background daemon (<code>dockerd</code>) that actually builds images and runs/stops/networks containers. The real worker.</dd></div>
+        <div><dt>Docker Desktop</dt><dd>The Mac/Windows app. Bundles the Engine, the lightweight Linux VM (see §1's callout), and a GUI dashboard. This is what <code>open -a Docker</code> launches.</dd></div>
+        <div><dt>Docker CLI</dt><dd>The <code>docker</code> command-line tool. Doesn't do the work itself — it sends instructions to the Engine and shows you the results.</dd></div>
+        <div><dt>Docker Compose</dt><dd>A CLI plugin (<code>docker compose ...</code>) for describing and running a <em>multi-container</em> setup from one YAML file, instead of one long <code>docker run</code> command per container. Covered next.</dd></div>
+      </dl>
+    </section>
+
+    <!-- ============ 4. COMPOSE ============ -->
+    <section id="compose" class="fund">
+      <span class="section-eyebrow">04 · fundamentals</span>
+      <h2>Docker Compose — orchestrating many containers as one</h2>
+      <p class="lede">Vicinia's infra is 5 containers (Postgres, Redis, Redis Commander, Redpanda, Redpanda Console). Running each by hand means 5 long, easy-to-typo <code>docker run</code> commands, re-typed identically every single time. Compose replaces that with one declarative file.</p>
+
+      <div class="code-wrap"><pre class="code"><span class="c1"># generic shape — not our actual file yet, see §5 for that</span>
+services:
+  my-service:
+    image: <span class="s">some-image:tag</span>
+    ports:
+      - <span class="s">"hostPort:containerPort"</span>
+    environment:
+      KEY: <span class="s">value</span>
+    volumes:
+      - <span class="s">named-volume:/path/in/container</span>
+    healthcheck:
+      test: [<span class="s">"CMD", "some-check-command"</span>]
+
+volumes:
+  named-volume:</pre></div>
+
+      <p><code>docker compose -f docker-compose.infra.yml up -d</code> reads this file and starts everything defined in it, in the background (<code>-d</code> = detached). <code>docker compose down</code> stops and removes the containers again. Compose also automatically creates one private network shared by every service in the file — covered in §6.</p>
+    </section>
+
+    <!-- ============ 5. PROJECT WALKTHROUGH ============ -->
+    <section id="project" class="proj">
+      <span class="section-eyebrow">05 · this project</span>
+      <h2>How Vicinia actually uses Docker</h2>
+      <p class="lede">The real file, service by service — <code>docker-compose.infra.yml</code> at the repo root.</p>
+
+      <h3><span class="num">5.1</span>postgres</h3>
+      <div class="code-wrap"><pre class="code">postgres:
+  image: <span class="s">postgres:16-alpine</span>
+  restart: <span class="s">unless-stopped</span>
+  environment:
+    POSTGRES_USER: <span class="s">vicinia</span>
+    POSTGRES_PASSWORD: <span class="s">vicinia</span>
+    POSTGRES_DB: <span class="s">vicinia</span>
+  ports:
+    - <span class="s">"5432:5432"</span>
+  volumes:
+    - vicinia-postgres-data:/var/lib/postgresql/data
+    - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
+  healthcheck:
+    test: [<span class="s">"CMD-SHELL", "pg_isready -U vicinia"</span>]</pre></div>
+      <p>The official Postgres image, when it starts against a genuinely empty data directory, runs every <code>.sql</code>/<code>.sh</code> file it finds mounted at <code>/docker-entrypoint-initdb.d/</code> — exactly once. That bind mount is how our own <code>001-create-databases.sql</code> (committed to the repo, see §7) creates the 9 logical databases on first boot.</p>
+
+      <h3><span class="num">5.2</span>redis</h3>
+      <div class="code-wrap"><pre class="code">redis:
+  image: <span class="s">redis:7-alpine</span>
+  ports:
+    - <span class="s">"6379:6379"</span>
+  volumes:
+    - vicinia-redis-data:/data
+  healthcheck:
+    test: [<span class="s">"CMD", "redis-cli", "ping"</span>]</pre></div>
+      <p>Stock Redis, nothing project-specific here — cart, OTP, refresh tokens, the access-token blacklist, and rate limiting all share this one instance, differentiated only by key prefix (see <code>docs/ARCHITECTURE.md</code> §13).</p>
+
+      <h3><span class="num">5.3</span>redis-commander</h3>
+      <div class="code-wrap"><pre class="code">redis-commander:
+  image: <span class="s">rediscommander/redis-commander:latest</span>
+  environment:
+    REDIS_HOSTS: <span class="s">local:redis:6379</span>
+  ports:
+    - <span class="s">"9191:8081"</span>
+  depends_on:
+    - redis</pre></div>
+      <p>A small web UI for browsing Redis keys, at <code>localhost:9191</code>. Notice its <code>REDIS_HOSTS</code> value: <code>redis:6379</code>, not <code>localhost:6379</code> — from <em>inside</em> this container, <code>redis</code> is the hostname of the other container, not itself. That's the subject of §6.</p>
+
+      <h3><span class="num">5.4</span>redpanda &amp; redpanda-console</h3>
+      <p>The Kafka-protocol broker and its web UI. This is the most configuration-heavy service in the file — it's covered in full depth (every flag explained) in <code>study/2026-08-20-infra-fundamentals.html</code> §5.4, and the one real bug it caused is walked through in §9 of <em>this</em> doc.</p>
+    </section>
+
+    <!-- ============ 6. NETWORKING ============ -->
+    <section id="networking" class="proj">
+      <span class="section-eyebrow">06 · this project</span>
+      <h2>Networking — how containers find each other, and how you reach them</h2>
+
+      <p>Compose creates one private network per project (<code>vicinia_default</code>) and attaches every service to it. Inside that network, <strong>each service's own name is its hostname</strong> — that's why <code>redis-commander</code> can reach Redis at literally the address <code>redis:6379</code>, no IP address needed, no configuration beyond "use this name." Docker runs an internal DNS that resolves service names to whichever container is currently running that service.</p>
+
+      <p>Separately, <code>ports: "5432:5432"</code> punches a hole from your <strong>host machine</strong> (your Mac) through to the container. The two numbers don't have to match — <code>"5432:5433"</code> would mean "reach the container's 5432 via my Mac's 5433 instead." We kept them equal everywhere for clarity.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 240" role="img" aria-label="Diagram of the vicinia_default Docker network containing postgres, redis, and redpanda containers reachable by service name inside the network, with host-mapped ports reaching them from the Mac outside.">
+          <rect x="20" y="20" width="600" height="200" rx="10" fill="none" stroke="currentColor" opacity="0.4"/>
+          <text x="36" y="42" font-family="IBM Plex Mono" font-size="10" opacity="0.6">your Mac (host)</text>
+
+          <rect x="60" y="66" width="500" height="130" rx="8" fill="none" stroke="currentColor" stroke-dasharray="4 3"/>
+          <text x="76" y="86" font-family="IBM Plex Mono" font-size="10">docker network: vicinia_default</text>
+
+          <rect x="90" y="110" width="120" height="50" rx="6" fill="none" stroke="currentColor"/>
+          <text x="150" y="132" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">postgres</text>
+          <text x="150" y="147" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">:5432</text>
+
+          <rect x="255" y="110" width="120" height="50" rx="6" fill="none" stroke="currentColor"/>
+          <text x="315" y="132" text-anchor="middle" font-family="IBM Plex Mono" font-size="10">redis</text>
+          <text x="315" y="147" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">:6379</text>
+
+          <rect x="420" y="110" width="120" height="50" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="480" y="132" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" class="accent-mark">redis-commander</text>
+          <text x="480" y="147" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.7" class="accent-mark">talks to "redis:6379"</text>
+
+          <line x1="315" y1="112" x2="450" y2="112" stroke="currentColor" opacity="0.5"/>
+          <text x="382" y="106" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.6">by service name</text>
+
+          <text x="330" y="216" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" opacity="0.6">host reaches containers only via published ports: "5432:5432" etc.</text>
+        </svg>
+        <figcaption>Inside the network: reach by service name. From the host: reach only by published port.</figcaption>
+      </figure>
+
+      <div class="callout">
+        <span class="label">The gotcha this caused for us</span>
+        <p>A network client doesn't just connect once — after the first connection, the server tells it the address to use for <em>all future</em> connections (the "advertised" address). If a container advertises its own service name, that address is meaningless to anything outside the Docker network — including every Spring Boot service we currently run directly on the host. Full story, and the actual bug this caused, in §9.</p>
+      </div>
+    </section>
+
+    <!-- ============ 7. VOLUMES ============ -->
+    <section id="volumes" class="proj">
+      <span class="section-eyebrow">07 · this project</span>
+      <h2>Volumes — where the data actually lives</h2>
+      <p class="lede">A container's own filesystem is disposable — delete the container, lose everything written inside it. Volumes are how data survives that.</p>
+
+      <dl class="terms">
+        <div><dt>Named volume</dt><dd><code>vicinia-postgres-data:/var/lib/postgresql/data</code> — Docker creates and manages this storage itself, outside any container's disposable filesystem. Postgres's actual data lives here, and survives the container being deleted and recreated.</dd></div>
+        <div><dt>Bind mount</dt><dd><code>./backend/docker/postgres-init:/docker-entrypoint-initdb.d</code> — maps a real folder <em>on your Mac</em> straight into the container. We use this specifically so our committed SQL file is what seeds the databases, rather than baking that SQL into a custom image nobody else could easily edit.</dd></div>
+      </dl>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 560 190" role="img" aria-label="Diagram contrasting a named volume, which is Docker-managed storage outside any container, with a bind mount, which maps a real folder on the host machine directly into the container.">
+          <text x="150" y="22" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="600">Named volume</text>
+          <rect x="40" y="40" width="220" height="50" rx="6" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="150" y="62" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" class="accent-mark">vicinia-postgres-data</text>
+          <text x="150" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.65">(Docker-managed, not a visible folder)</text>
+          <line x1="150" y1="90" x2="150" y2="120" stroke="currentColor"/>
+          <rect x="60" y="120" width="180" height="40" fill="none" stroke="currentColor"/>
+          <text x="150" y="144" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">postgres container</text>
+
+          <text x="440" y="22" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" font-weight="600">Bind mount</text>
+          <rect x="330" y="40" width="220" height="50" rx="6" fill="none" stroke="currentColor"/>
+          <text x="440" y="62" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">./backend/docker/postgres-init</text>
+          <text x="440" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="8" opacity="0.65">(a real folder on your Mac, in git)</text>
+          <line x1="440" y1="90" x2="440" y2="120" stroke="currentColor"/>
+          <rect x="350" y="120" width="180" height="40" fill="none" stroke="currentColor"/>
+          <text x="440" y="144" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">postgres container</text>
+        </svg>
+        <figcaption>Both map to a path inside the container — one is Docker's own storage, the other is a real folder you can see and edit.</figcaption>
+      </figure>
+
+      <div class="callout">
+        <span class="label">Why editing the init script alone doesn't do anything</span>
+        <p>Postgres only runs files from <code>/docker-entrypoint-initdb.d/</code> the very first time it starts against a truly <em>empty</em> data directory. Once <code>vicinia-postgres-data</code> has data in it, editing <code>001-create-databases.sql</code> and re-running <code>docker compose up</code> changes nothing — the volume isn't empty anymore. The only way to force it to re-run init scripts is <code>docker compose down -v</code> (the <code>-v</code> deletes the named volumes too), which also means losing whatever was in the database.</p>
+      </div>
+    </section>
+
+    <!-- ============ 8. HEALTHCHECKS ============ -->
+    <section id="healthchecks" class="proj">
+      <span class="section-eyebrow">08 · this project</span>
+      <h2>Healthchecks — how start-infra.sh knows Postgres is really ready</h2>
+      <p>"Container started" and "service ready to accept connections" are not the same moment — Postgres's process can be running for a second or two before it's actually accepting queries. A <code>healthcheck</code> block tells Docker how to ask "are you <em>actually</em> ready?", not just "are you running?":</p>
+
+      <div class="code-wrap"><pre class="code">healthcheck:
+  test: [<span class="s">"CMD-SHELL", "pg_isready -U vicinia"</span>]
+  interval: <span class="k">5s</span>
+  timeout: <span class="k">5s</span>
+  retries: <span class="k">10</span></pre></div>
+
+      <p>Docker runs that command inside the container every 5 seconds and tracks a status: <code>starting</code> → <code>healthy</code> or <code>unhealthy</code>. Our three data services each have one (<code>pg_isready</code> for Postgres, <code>redis-cli ping</code> for Redis, <code>rpk cluster health</code> for Redpanda).</p>
+
+      <p><code>start-infra.sh</code> polls this exact status before doing anything else:</p>
+      <div class="code-wrap"><pre class="code"><span class="c1"># from start-infra.sh</span>
+status=$(docker inspect --format=<span class="s">'{{.State.Health.Status}}'</span> <span class="s">"$container"</span>)
+<span class="c1"># loops until status == "healthy" before starting any Spring Boot service</span></pre></div>
+      <p>This is why the script waits for Postgres/Redis/Redpanda to report <code>healthy</code> before building or starting a single Java service — starting <code>auth-service</code> against a Postgres that's merely "running" but not yet "accepting connections" would just fail on its first database call.</p>
+    </section>
+
+    <!-- ============ 9. THE BUG ============ -->
+    <section id="debugging" class="adv">
+      <span class="section-eyebrow">09 · advanced</span>
+      <h2>A real bug, explained: bind address vs. advertised address</h2>
+      <p class="lede">The single most instructive Docker networking bug we hit building Vicinia — worth understanding on sight, because it isn't specific to Redpanda; it shows up in real Kafka, Redis Cluster, and most clustered systems.</p>
+
+      <h3><span class="num">9.1</span>What happened</h3>
+      <p>Redpanda was configured to advertise <code>redpanda:9092</code> — its own service name, meaningful only <em>inside</em> the Docker network. Every Spring Boot service was, at that point, still running directly on the host (not in a container), connecting to Redpanda via <code>localhost:9092</code>. The very first connection succeeded — <code>localhost:9092</code> is exactly what was configured. But the first thing a Kafka client does after connecting is ask for cluster metadata, and the broker's answer included <em>its own advertised address</em> for all future traffic: <code>redpanda</code>. A hostname that means nothing outside the Docker network. Every reconnect after that first one failed with <code>UnknownHostException: redpanda</code>.</p>
+
+      <h3><span class="num">9.2</span>The fix, and why it's temporary</h3>
+      <div class="code-wrap"><pre class="code"><span class="c1"># docker-compose.infra.yml — redpanda service</span>
+--kafka-addr=<span class="s">PLAINTEXT://0.0.0.0:9092</span>          <span class="c1"># bind: listen on every interface</span>
+--advertise-kafka-addr=<span class="s">PLAINTEXT://localhost:9092</span>  <span class="c1"># advertise: what clients reconnect to</span></pre></div>
+      <p>Advertising <code>localhost:9092</code> is correct <em>right now</em>, because every client is a host-run process. It stops being correct the moment app services themselves move into containers on this same Docker network (Stage 19, see §10) — at that point it needs to flip back to <code>redpanda:9092</code>, because <code>localhost</code> inside a container refers to that container itself, not the Redpanda container next to it.</p>
+
+      <h3><span class="num">9.3</span>Why restarting the container alone didn't fix already-running services</h3>
+      <p>The already-running <code>auth-service</code> and <code>user-service</code> processes had <em>already cached</em> the bad metadata (<code>redpanda:9092</code>) from before the fix. A client stuck failing to connect to a bad address never gets the chance to fetch corrected metadata — it just keeps retrying the address it already has. Fixing the server side doesn't retroactively fix a client that's already wedged on a stale value; the JVMs had to be restarted to force a completely fresh bootstrap.</p>
+
+      <div class="callout">
+        <span class="label">The generalizable lesson</span>
+        <p>Any time a network client behaves correctly on its <em>first</em> connection but fails on <em>reconnect</em>, suspect a bind-vs-advertise mismatch before anything else — the address you dial and the address the server hands back for next time are two different settings, and only one of them has to be wrong to cause exactly this symptom.</p>
+      </div>
+    </section>
+
+    <!-- ============ 10. ROADMAP ============ -->
+    <section id="roadmap" class="adv">
+      <span class="section-eyebrow">10 · advanced</span>
+      <h2>Where Docker goes next for Vicinia</h2>
+      <p>Everything above is Stage 0-2's reality: Docker running the <em>data layer</em> only, app services on the host. <code>docs/BUILD_TRACKER.md</code> Stage 19 is where that changes:</p>
+
+      <ul class="plain">
+        <li><strong>One Dockerfile per service</strong> — a multi-stage build: an early stage with the full JDK + Maven compiles the jar, a final stage copies just the jar onto a slim JRE-only base image, keeping the shipped image small (the build tools themselves never make it into the final image).</li>
+        <li><strong><code>docker-compose.prod.yml</code></strong> — covering all 19 services plus Redpanda/Postgres/Redis, replacing today's host-run <code>mvn spring-boot:run</code> processes entirely.</li>
+        <li><strong>GitHub Actions</strong> builds each changed service's image on merge to <code>main</code> and pushes it to GitHub Container Registry (GHCR).</li>
+        <li><strong>The Oracle VM</strong> pulls updated images and restarts with <code>docker compose pull &amp;&amp; docker compose up -d</code> — no manual deploy steps.</li>
+      </ul>
+      <p>Full reasoning for the deployment target itself (why Oracle's free VM, why Redpanda over Kafka there too, the RAM budget) is in <code>docs/DEPLOYMENT.md</code>.</p>
+    </section>
+
+    <!-- ============ 11. CHEAT SHEET ============ -->
+    <section id="cheatsheet" class="ref">
+      <span class="section-eyebrow">11 · reference</span>
+      <h2>Command cheat sheet</h2>
+
+      <table class="cheat-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">docker compose -f docker-compose.infra.yml up -d</code></td><td>Starts everything in the file, in the background.</td></tr>
+          <tr><td><code class="inline">docker compose ... ps</code></td><td>Lists this project's containers and their health status.</td></tr>
+          <tr><td><code class="inline">docker compose ... down</code></td><td>Stops and removes containers; named volumes (the data) survive.</td></tr>
+          <tr><td><code class="inline">docker compose ... down -v</code></td><td>Same, but also deletes volumes — the only way to force Postgres to re-run init scripts.</td></tr>
+          <tr><td><code class="inline">docker compose ... logs -f postgres</code></td><td>Streams logs from one service, live.</td></tr>
+          <tr><td><code class="inline">docker exec -it vicinia-postgres psql -U vicinia</code></td><td>Opens a real psql shell inside the running Postgres container.</td></tr>
+          <tr><td><code class="inline">docker inspect --format='{{.State.Health.Status}}' NAME</code></td><td>Prints one container's healthcheck status directly — what <code>start-infra.sh</code> polls.</td></tr>
+          <tr><td><code class="inline">docker ps</code></td><td>Lists <em>all</em> running containers on the machine, not just this project's.</td></tr>
+          <tr><td><code class="inline">docker network ls</code> / <code class="inline">inspect vicinia_default</code></td><td>Lists networks, or shows exactly which containers are attached to ours.</td></tr>
+          <tr><td><code class="inline">docker volume ls</code></td><td>Lists all named volumes Docker is managing, including ours.</td></tr>
+          <tr><td><code class="inline">docker system df</code></td><td>Shows how much disk images/containers/volumes are actually using.</td></tr>
+          <tr><td><code class="inline">docker system prune</code></td><td>Deletes stopped containers, unused networks, and dangling images — reclaims disk space.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 12. GITIGNORE ============ -->
+    <section id="gitignore" class="ref">
+      <span class="section-eyebrow">12 · reference</span>
+      <h2>What never gets committed, and why</h2>
+      <p class="lede">Every time you run <code>./start-infra.sh</code> or open this project in an IDE, files appear that <code>git status</code> never mentions. That's <code>.gitignore</code> doing its job — here's exactly what it's hiding and why each entry earns its place.</p>
+
+      <table class="cheat-table">
+        <thead><tr><th>Entry</th><th>What it actually is</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">target/</code></td><td>Maven's build output per module — compiled <code>.class</code> files and the packaged jar. Regenerated from source by <code>mvn clean install</code> every time; committing binary build output would bloat the repo's history with files that go stale the moment source changes, and differ machine to machine anyway.</td></tr>
+          <tr><td><code class="inline">*.log</code>, <code class="inline">logs/</code></td><td>Runtime output from <code>start-infra.sh</code>'s services. Different every run, purely diagnostic, no reason it should ever live in version control.</td></tr>
+          <tr><td><code class="inline">.pids/</code></td><td><code>start-infra.sh</code>'s process-ID tracking files. Literally just numbers meaningful only to your machine's current run — wrong the moment you restart anything, meaningless on anyone else's machine.</td></tr>
+          <tr><td><code class="inline">.idea/</code>, <code class="inline">*.iml</code></td><td>JetBrains IDE project metadata — window layout, run configurations, indexing cache. Personal editor state, not project source; committing it would force your exact IDE setup on every collaborator and generate merge conflicts over trivial things like which file tab was open.</td></tr>
+          <tr><td><code class="inline">.DS_Store</code></td><td>macOS Finder's per-folder metadata (icon positions, view settings). A pure Finder artifact — meaningless noise on Linux/Windows and in git history.</td></tr>
+          <tr><td><code class="inline">node_modules/</code>, <code class="inline">dist/</code>, <code class="inline">build/</code></td><td>Frontend equivalents of <code>target/</code>: installed npm packages (huge, regenerable from <code>package.json</code>) and compiled frontend output.</td></tr>
+          <tr><td><code class="inline">.env</code>, <code class="inline">.env.local</code></td><td>Local environment overrides — the one category that must <em>never</em> be committed even by accident, since these commonly hold real secrets/credentials once the project has any.</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="num">12.1</span>How the pattern syntax actually works</h3>
+      <p>Our actual file:</p>
+      <div class="code-wrap"><pre class="code"><span class="c1"># Java / Maven</span>
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+<span class="c1"># IDE</span>
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+<span class="c1"># Node / React</span>
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+<span class="c1"># Logs</span>
+*.log
+logs/
+
+<span class="c1"># start-infra.sh / stop-infra.sh PID tracking</span>
+.pids/
+
+<span class="c1"># Docker</span>
+docker-compose.override.yml</pre></div>
+
+      <ul class="plain">
+        <li>A trailing slash (<code>target/</code>) matches a <em>directory</em> by that name, anywhere in the repo.</li>
+        <li>A leading <code>*</code> (<code>*.jar</code>) is a wildcard — matches any file with that extension, anywhere.</li>
+        <li>A leading <code>!</code> is a <strong>negation</strong> — an exception carved out of a broader rule above it. <code>!.mvn/wrapper/maven-wrapper.jar</code> means: "ignore all jars in general (<code>*.jar</code>, since a working tree can accumulate build artifacts named <code>*.jar</code>), <em>except</em> this one specific jar — the Maven wrapper binary, which genuinely needs to be committed so anyone can run <code>./mvnw</code> without installing Maven first."</li>
+      </ul>
+
+      <div class="callout">
+        <span class="label">The one gotcha worth knowing</span>
+        <p><code>.gitignore</code> only stops <strong>new, untracked</strong> files from being picked up by <code>git add</code>. If a file was already committed <em>before</em> a rule was added to ignore it, adding the rule alone does nothing — git keeps tracking it. Fixing that needs <code>git rm --cached &lt;file&gt;</code> (removes it from tracking, leaves the actual file on disk untouched), then a commit. To check why a specific file is or isn't being ignored, <code>git check-ignore -v &lt;path&gt;</code> tells you exactly which rule, in which file, matched it.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="done mono">vicinia · docker deep dive · 2026-08-21</footer>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function (l) { return document.querySelector(l.getAttribute('href')); });
+
+  function setActive(id) {
+    links.forEach(function (l) {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { if (s) observer.observe(s); });
+  }
+})();
+</script>
+
+</body>
+</html>
