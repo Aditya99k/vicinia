@@ -350,6 +350,20 @@
           </div></div></div>
         </article>
 
+        <article class="branch" id="node-c8">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c8" aria-expanded="false">
+            <span class="tag">08</span>
+            <span class="title">start-infra.sh / stop-infra.sh — one command for the whole stack</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c8"><div class="detail-inner"><div class="detail">
+            <p>Two scripts at the repo root, matching the pattern from blinkit-clone. <code>start-infra.sh</code>: Docker daemon (launching it if needed) → infra containers, waiting on each one's Docker healthcheck → <code>mvn clean install -DskipTests</code> across the whole backend → each Spring Boot service in dependency order, waiting on <code>/actuator/health</code> before starting the next → a final Eureka registry snapshot and a colored summary of every URL. It's idempotent: re-running it against an already-up stack just prints "already running" for each piece instead of erroring or double-starting anything. <code>stop-infra.sh</code> reverses it — kills tracked PIDs (from <code>.pids/</code>, sanity-checked against the process's own command line before killing, in case a PID got reused by something unrelated), then <code>docker compose down</code>.</p>
+            <div class="why"><strong>why mvn install before starting anything</strong><code>spring-boot:run</code> in one module resolves sibling modules like <code>common</code> from the local Maven repository (<code>~/.m2</code>), not from a sibling module's <code>target/classes</code> directly. Skip the install step after changing <code>common</code> and a service can silently start against a stale jar — this is exactly what we did by hand, every time, throughout Stage 2's build.</div>
+            <p>Two real bugs turned up building these, both cosmetic but worth knowing on sight — see the Deep Dives card for the first one.</p>
+          </div></div></div>
+        </article>
+
       </div>
 
       <!-- ===================== DEEP DIVES ===================== -->
@@ -445,6 +459,21 @@
           </div></div></div>
         </article>
 
+        <article class="branch" id="node-d7">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d7" aria-expanded="false">
+            <span class="tag">bash</span>
+            <span class="title">Why some ANSI colors rendered and others printed literally</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d7"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">The color variables were all defined the same way — why did some show as real color and others print as literal <code>\033[2m</code> text?</dt><dd class="a">All were defined with single quotes, e.g. <code>DIM='\033[2m'</code> — single quotes mean bash never interprets <code>\033</code> as an escape at all; the variable just holds four literal characters. When a color variable sat directly inside a <code>printf</code> <em>format string</em> (its first argument), printf's own backslash processing converted it to a real escape byte at print time. But when a color variable was baked into a value passed as a <code>%s</code> <em>argument</em> — built up earlier via string concatenation — <code>%s</code> substitution never interprets backslashes, so it printed the literal text. Same variable, two different outcomes, entirely depending on which position it ended up in by the time it reached <code>printf</code>.</dd></div>
+              <div><dt class="q">What's the fix, and why does it work everywhere at once?</dt><dd class="a">Define the variables with ANSI-C quoting instead — <code>DIM=$'\033[2m'</code>. The <code>$'...'</code> form makes bash interpret the escape sequence immediately, at assignment time, so the variable always holds the real escape byte no matter how it's later concatenated, passed around, or which argument position it lands in. The lesson generalizes past color codes: any time a string built from pieces behaves differently depending on <em>where</em> it's substituted, the bug is usually that some processing step (escape interpretation, glob expansion, word splitting) is position-dependent rather than value-dependent — fix it at the source of the value, not at each call site.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
       </div>
     </div>
   </div>
@@ -467,8 +496,9 @@
     ['root', 'hub-deep', 'spine'],
     ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
     ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'], ['hub-build', 'c7', 'build'],
+    ['hub-build', 'c8', 'build'],
     ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'],
-    ['hub-deep', 'd4', 'deep'], ['hub-deep', 'd5', 'deep'], ['hub-deep', 'd6', 'deep']
+    ['hub-deep', 'd4', 'deep'], ['hub-deep', 'd5', 'deep'], ['hub-deep', 'd6', 'deep'], ['hub-deep', 'd7', 'deep']
   ];
 
   function edgePoint(el, side, containerRect) {
