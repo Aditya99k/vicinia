@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 2 Build Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+
+  /* ============ TOKENS (same family as Day 1's mind map) ============ */
+  :root {
+    --paper: #EDF1F6;
+    --surface: #FFFFFF;
+    --ink: #172233;
+    --muted: #58687F;
+    --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+
+    --accent: #C6912E;
+    --accent-ink: #241804;
+    --accent-soft: rgba(198,145,46,0.14);
+
+    --wire-build: #6C87A8;
+    --wire-deep: #B0765A;
+
+    --wash-build: rgba(62,124,166,0.05);
+    --wash-deep: rgba(181,101,58,0.06);
+
+    --tag-build: #3E7CA6;
+    --tag-deep: #B5653A;
+
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526;
+      --surface: #131F35;
+      --ink: #E7ECF6;
+      --muted: #93A2C0;
+      --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+
+      --accent: #E0AC50;
+      --accent-ink: #1C1200;
+      --accent-soft: rgba(224,172,80,0.14);
+
+      --wire-build: #6E8FBD;
+      --wire-deep: #C6835F;
+
+      --wash-build: rgba(110,143,189,0.07);
+      --wash-deep: rgba(198,131,95,0.07);
+
+      --tag-build: #85AFDD;
+      --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+
+  /* ============ RESET / BASE ============ */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  /* ============ TITLE BLOCK ============ */
+  .titleblock {
+    max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px;
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker {
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 8px; display: block;
+  }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 52ch; margin-top: 10px; }
+  .stamp {
+    font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px;
+    display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface);
+  }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  /* ============ CANVAS / MINDMAP ============ */
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root {
+    position: relative; width: 168px; background: var(--accent); color: var(--accent-ink);
+    border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono);
+  }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle {
+    width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px;
+    background: none; border: none; cursor: pointer; text-align: left;
+  }
+  .branch-toggle .tag {
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600;
+    padding: 3px 7px; border-radius: 3px; white-space: nowrap;
+  }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 16px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.88rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+  .detail dd.a strong { color: var(--ink); font-weight: 600; }
+
+  /* ============ LEGEND ============ */
+  .legend {
+    max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px;
+    font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 2 Build Map</h1>
+    <p class="sub">Stage 2 in depth: auth, RBAC, event-driven profiles, gateway security — what it does, why it's built that way, and three real bugs found by actually running it.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 2</span>
+    <span class="k">Date</span><span class="v">2026-08-21</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 2 root node to a Build Log branch and a Deep Dives branch, each fanning out into topic cards."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Day 2</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <!-- ===================== BUILD LOG ===================== -->
+      <div class="leaf-group build">
+
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">common — JWT, internal secret, event envelope</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p><code>JwtTokenProvider</code> signs HS256 access tokens (15-min TTL) carrying <code>jti</code>/<code>sub</code>/email/roles/permissions, using a key built via <code>Keys.hmacShaKeyFor(secret)</code> — the same secret is pulled from config-server by both auth-service (issues) and api-gateway (verifies).</p>
+            <p><code>InternalRequestFilter</code> is a plain <code>jakarta.servlet.Filter</code> — deliberately not a Spring <code>@Component</code>. <code>EventEnvelope&lt;T&gt;</code> wraps every Kafka payload with <code>eventId</code>/<code>eventType</code>/<code>schemaVersion</code>/<code>occurredAt</code> per ARCHITECTURE.md §9.</p>
+            <div class="why"><strong>why no Spring annotations in common</strong>Annotating classes in a shared module with <code>@Component</code> only works if every consumer's component-scan reaches that package — easy to get wrong across module boundaries. Each service instead wires these as explicit <code>@Bean</code> methods reading its own <code>@Value</code> config. It also keeps <code>jakarta.servlet-api</code> a <code>provided</code>-scope dependency of <code>common</code>, so api-gateway (WebFlux, no servlet API at all) can depend on the module for <code>JwtTokenProvider</code> without ever touching the servlet-based filter class.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">RBAC schema — Role, Permission, UserCredential</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <p>Two many-to-many joins: <code>Role↔Permission</code> and <code>UserCredential↔Role</code>. <code>RoleSeeder</code> (a <code>CommandLineRunner</code>) creates the 4 V1 roles and their permission bundles on first boot if the table is empty. <code>UserCredential</code>'s primary key is a Hibernate-native <code>GenerationType.UUID</code> — that exact UUID becomes the JWT <code>sub</code> claim and, later, <code>user-service</code>'s <code>UserProfile.id</code>.</p>
+            <div class="why"><strong>why model permissions now for 4 roles</strong>A role is a name plus a set of permissions, not a bare string. Adding <code>SUPPORT_AGENT</code> or <code>MERCHANT_STAFF</code> later is then a new seeded row with a scoped permission bundle — a config change, not a schema migration (ADR 0006).</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">Auth flows — signup, login, refresh, logout, reset</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li><strong>signup</strong> — email-uniqueness check, blocks self-registering as <code>ADMIN</code>, bcrypt-hashes the password, saves, publishes <code>user.registered</code>, then issues tokens exactly like login.</li>
+              <li><strong>refresh</strong> — the opaque token is validated <em>and deleted</em> in one step (rotation): a stolen refresh token only works once. The client sends <code>userId</code> alongside it, matching the documented Redis key <code>refresh:{userId}</code> exactly, so there's no separate token→user reverse index to keep in sync.</li>
+              <li><strong>logout</strong> — reads the raw <code>Authorization</code> header directly (not the gateway's <code>X-User-Id</code>) and parses it itself to get <code>jti</code> + exact expiry, so the blacklist TTL is bounded to the token's own remaining life, never longer. Idempotent: a garbage or already-expired token is silently a no-op.</li>
+              <li><strong>forgot/reset-password</strong> — a 15-minute, one-time Redis token. The forgot-password response is identical whether or not the email exists (no account enumeration); reset revokes every existing refresh session, forcing re-login everywhere.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">user-service — profile created by Kafka, not an API call</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <p>There is no <code>POST /users</code> endpoint. <code>UserEventConsumer</code> reacts to <code>user.registered</code> and creates the <code>UserProfile</code> row — idempotent via a plain <code>existsById</code> check before insert, which is itself the natural state-check for this case (no separate <code>processed_events</code> table needed).</p>
+            <p>The consumer deserializes into its own local <code>UserEventEnvelope</code> record, not auth-service's Java classes.</p>
+            <div class="why"><strong>why a local envelope, not a shared type</strong>Jackson's default JSON type headers embed the producer's fully-qualified class name (e.g. <code>com.vicinia.authservice.messaging.UserRegisteredPayload</code>) — which doesn't exist on user-service's classpath, since they're separate deployable modules. Producer-side <code>spring.json.add.type.headers=false</code> plus a consumer-side default type avoids that entirely; the envelope's <code>payload</code> is read as a plain <code>Map</code> and picked apart by hand for whichever <code>eventType</code> is recognized.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">api-gateway — AuthGlobalFilter</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>One <code>GlobalFilter</code> at <code>Ordered.HIGHEST_PRECEDENCE</code> runs on <em>every</em> proxied request. First it always strips any client-supplied <code>X-User-*</code>/<code>X-Internal-Secret</code> headers and re-stamps the real internal secret. If the path matches <code>vicinia.gateway.public-paths</code> (via <code>AntPathMatcher</code>), it forwards immediately. Otherwise it requires a <code>Bearer</code> token, parses it with the shared <code>JwtTokenProvider</code>, checks <code>blacklist:{jti}</code> reactively via <code>ReactiveStringRedisTemplate</code>, and only then injects <code>X-User-Id</code>/Email/Roles/Permissions from the verified claims.</p>
+            <div class="why"><strong>why strip headers before checking anything</strong>If the strip happened only on the protected-path branch, a request to a <em>public</em> path could still smuggle a forged <code>X-User-Id</code> straight through to a service that trusts it blindly. Stripping unconditionally, before the public/protected branch, closes that gap.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c6" aria-expanded="false">
+            <span class="tag">06</span>
+            <span class="title">Three real bugs, found only by running it</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c6"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li><strong>Port collision.</strong> Redpanda's pandaproxy/schema-registry were mapped to host ports 8081/8082 in Stage 1 — invisible until Stage 2 actually tried to bind auth-service/user-service to those same ports. Fixed by remapping the host side only, to 18081/18082.</li>
+              <li><strong>Unreachable advertised address.</strong> Redpanda advertised <code>redpanda:9092</code> — a hostname that only resolves inside the Docker network. Every service currently runs on the host via <code>mvn spring-boot:run</code>, so every reconnect after the first bootstrap failed with <code>UnknownHostException</code>. Fixed by advertising <code>localhost:9092</code> for this stage; will flip back to the container hostname once app services are themselves containerized (Stage 19). Already-running services also needed a restart — they'd cached the bad broker metadata and kept retrying it even after the container was fixed.</li>
+              <li><strong>Spring bean-name collision.</strong> A custom <code>GatewayProperties</code> class collided by default bean name with Spring Cloud Gateway's own internal <code>gatewayProperties</code> bean (same simple class name, different package). Renamed to <code>PublicPathsProperties</code>.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c7">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c7" aria-expanded="false">
+            <span class="tag">07</span>
+            <span class="title">Full verification pass, then torn down</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c7"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>Signup → RBAC roles/permissions correctly on the token; profile 404 until the Kafka event lands, then 200.</li>
+              <li>Login: correct password 200, wrong password 401. Duplicate email 409. Self-registering as <code>ADMIN</code> 400.</li>
+              <li>Refresh rotates the token; reusing the old refresh token afterward is 401.</li>
+              <li>Logout blacklists the access token; reusing it afterward is 401.</li>
+              <li>Forgot/reset-password: reset works once, a second attempt with the same token is 401.</li>
+              <li>Hitting auth-service or user-service directly on their own ports, bypassing the gateway, is 403.</li>
+              <li>All Spring Boot processes killed and <code>docker compose down</code> — nothing left running.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+      </div>
+
+      <!-- ===================== DEEP DIVES ===================== -->
+      <div class="leaf-group deep">
+
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">jwt</span>
+            <span class="title">Access token vs. refresh token — why two different shapes</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why is the access token a signed JWT but the refresh token a random UUID?</dt><dd class="a">The access token needs to be verified <em>without a database round-trip</em> on every request — that's the entire point of a self-contained signed token; the gateway checks a signature, not a table. A refresh token, by contrast, is presented rarely and needs to be <strong>revocable</strong> — logout, password reset, or a detected compromise all need to kill it immediately. A signed JWT can't be un-signed; an opaque, server-stored token can simply be deleted. Building it as a JWT would just mean bolting a blacklist onto it anyway, at which point it isn't gaining anything over an opaque token.</dd></div>
+              <div><dt class="q">What actually stops someone from swapping the roles/permissions claims in their own JWT?</dt><dd class="a">The HMAC signature. Any change to the payload — even one character — invalidates the signature check against the shared secret, which only auth-service and api-gateway hold. This is also exactly why the secret has to be long enough for HS256 (32+ bytes) and never logged or committed anywhere real.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">rbac</span>
+            <span class="title">Role + permission modeling, one step further</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Isn't a role string ("CUSTOMER") simpler than a role+permission join table?</dt><dd class="a">Simpler to write today, more expensive the first time a role needs to change shape. With permissions modeled explicitly, "give merchants read-only access to their own settlement history" is granting one existing permission to one role — no code change, no redeploy. With a bare role string, every permission check is an <code>if (role.equals("MERCHANT"))</code> scattered across services, and a new access pattern means touching all of them.</dd></div>
+              <div><dt class="q">Why bake permissions into the JWT instead of looking them up per-request?</dt><dd class="a">Same reasoning as access-vs-refresh above: a per-request DB lookup for authorization defeats the purpose of a stateless token. The tradeoff, made explicitly here, is that a permission change doesn't take effect for a given user until their current token expires (≤15 minutes) — acceptable for V1, and the exact kind of tradeoff worth being able to name out loud rather than not noticing it exists.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">kafka</span>
+            <span class="title">Idempotency without a shared schema module</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">What's the actual risk if the consumer processed the same event twice?</dt><dd class="a">A second attempt to insert a <code>UserProfile</code> with the same id would hit the primary key — but far worse, imagine this were an inventory or payment event: double-processing a "confirm payment" event could double-credit an account. Checking current state before applying (does this profile already exist?) is what makes the operation safe to run more than once, which matters because Kafka's at-least-once delivery guarantees a consumer restart can replay events it already saw.</dd></div>
+              <div><dt class="q">Would a shared Java module with the event types have been simpler?</dt><dd class="a">For two services, marginally. At 16 services all consuming a handful of aggregates' events, a shared schema module becomes a coordination bottleneck — every consumer's deploy is now coupled to that module's version. Treating the wire format as the contract (JSON shape, not a shared class) is what actually keeps 16 services independently deployable, which is the entire premise of the architecture.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d4" aria-expanded="false">
+            <span class="tag">gateway</span>
+            <span class="title">One GlobalFilter vs. per-route filters</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d4"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why one filter for all 13 routes instead of attaching auth to each route definition?</dt><dd class="a">A per-route filter has to be remembered on every single route — miss it once on a new service's route and that service is silently wide open. A <code>GlobalFilter</code> runs on everything by construction; the routes stay declarative (just path → destination), and the security decision (public vs. protected) lives in exactly one place, the public-paths list, instead of being duplicated across 13 route definitions.</dd></div>
+              <div><dt class="q">Why does it need Redis at all if the JWT signature is already enough to trust the token?</dt><dd class="a">A valid signature only proves the token was legitimately issued — not that it's still supposed to be usable <em>right now</em>. Logout has to actually revoke access before natural expiry, and a signature check alone can never express "this specific token, no longer." That's the one thing the blacklist adds that the JWT alone structurally cannot.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d5" aria-expanded="false">
+            <span class="tag">redis</span>
+            <span class="title">Three key namespaces, three different lifetimes</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d5"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why is the blacklist TTL computed per-token instead of a fixed value?</dt><dd class="a"><code>blacklist:{jti}</code> is set to expire at exactly the token's own remaining lifetime (<code>Duration.between(now, expiresAt)</code>), never longer. A fixed 15-minute TTL would usually be fine since that's the access-token lifetime anyway, but computing it exactly means the blacklist entry can never outlive the token it's blocking — no stale entries accumulating in Redis for tokens that would've expired naturally anyway.</dd></div>
+              <div><dt class="q">Why does refresh-token rotation delete-then-reissue instead of just extending the same token?</dt><dd class="a">If a refresh token were reusable indefinitely until its 30-day TTL, a leaked token would work for the attacker for up to 30 days with no signal to the real user. Rotation means a stolen-and-used token immediately fails for the legitimate user's <em>next</em> refresh — a detectable, actionable signal — rather than silently coexisting.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d6" aria-expanded="false">
+            <span class="tag">debugging</span>
+            <span class="title">The bind-vs-advertise bug, generalized</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d6"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why did the Kafka connection fail on <em>reconnect</em> rather than the very first attempt?</dt><dd class="a">The first connection to <code>localhost:9092</code> (the bootstrap server) always succeeds — that's just what's in the config. But the very first thing a Kafka client does after connecting is ask for cluster metadata, and the broker answers with its <em>advertised</em> address for all future traffic. Once that address is <code>redpanda</code> — meaningless outside the Docker network — every subsequent connection attempt targets a hostname the host machine can't resolve. The bootstrap address and the address actually used are different things, and only the second one was wrong.</dd></div>
+              <div><dt class="q">Why didn't fixing the container immediately fix the running services?</dt><dd class="a">The already-running auth-service and user-service had already cached the broker metadata pointing at the old, unreachable <code>redpanda:9092</code>, and a client stuck failing to connect never gets the chance to re-fetch corrected metadata — it just keeps retrying the stale address. Restarting the JVMs was necessary to force a completely fresh bootstrap. This is a good general lesson: fixing the server side of a cached-address problem doesn't retroactively fix clients that are already wedged on the bad value.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'], ['hub-build', 'c7', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'],
+    ['hub-deep', 'd4', 'deep'], ['hub-deep', 'd5', 'deep'], ['hub-deep', 'd6', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(drawConnectors);
+  }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
