@@ -93,7 +93,7 @@ printf "${BOLD}${CYAN}"
 cat <<'EOF'
 
   ╔══════════════════════════════════════╗
-  ║            VICINIA · start            ║
+  ║            VICINIA · start           ║
   ╚══════════════════════════════════════╝
 EOF
 printf "${RESET}"
@@ -170,7 +170,7 @@ fi
 printf "\n${BOLD}${GREEN}"
 cat <<'EOF'
   ╔══════════════════════════════════════════════════════╗
-  ║                 Vicinia is up                          ║
+  ║                 Vicinia is up                        ║
   ╚══════════════════════════════════════════════════════╝
 EOF
 printf "${RESET}\n"

@@ -27,7 +27,7 @@ printf "${BOLD}${CYAN}"
 cat <<'EOF'
 
   ╔══════════════════════════════════════╗
-  ║             VICINIA · stop            ║
+  ║             VICINIA · stop           ║
   ╚══════════════════════════════════════╝
 EOF
 printf "${RESET}"

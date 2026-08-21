@@ -1,0 +1,270 @@
+{
+  "info": {
+    "name": "Vicinia — Stage 0-2 Endpoints",
+    "description": "Every endpoint that exists through Stage 2 (auth-service, user-service), routed through api-gateway. Run 'Signup' or 'Login' first — their test scripts auto-capture accessToken/refreshToken/userId into collection variables, which every other request reuses automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "userId", "value": "" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "addressId", "value": "" },
+    { "key": "resetToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/signup", "host": ["{{baseUrl}}"], "path": ["api", "auth", "signup"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"riya@example.com\",\n  \"password\": \"supersecret123\",\n  \"role\": \"CUSTOMER\"\n}"
+            },
+            "description": "role is optional (defaults to CUSTOMER) and must be one of CUSTOMER, MERCHANT, DELIVERY_PARTNER — ADMIN cannot self-register (400). Returns 409 if the email is already registered."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('userId', body.userId);",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"riya@example.com\",\n  \"password\": \"supersecret123\"\n}"
+            },
+            "description": "200 with tokens on success, 401 on wrong password or unknown email."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('userId', body.userId);",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "description": "Rotates the refresh token — the old one becomes invalid the instant this succeeds (re-running this exact request twice in a row will 401 on the second try, by design)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] },
+            "description": "Blacklists the current access token and revokes the refresh token. Any request using {{accessToken}} after this will 401 — re-run Login to get a fresh one."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "forgot-password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"riya@example.com\"\n}"
+            },
+            "description": "Always returns 200 with the same message, whether or not the email exists (no account enumeration). Since notification-service doesn't exist yet, the actual reset token is only visible in auth-service's own log output (logs/auth-service.log) — copy it into the resetToken variable to test Reset Password below."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "reset-password"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"brandnewpass456\"\n}"
+            },
+            "description": "One-time use — a second attempt with the same token 401s. Also revokes all existing refresh sessions for that user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users/me/profile", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "profile"] },
+            "description": "404 for a few seconds right after Signup — the profile is created asynchronously by user-service consuming the user.registered Kafka event, not synchronously by the signup call itself."
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me/profile", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Riya Sharma\",\n  \"phone\": \"+91-9876543210\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List My Addresses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses"] }
+          }
+        },
+        {
+          "name": "Add Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"line1\": \"221B Baker Street\",\n  \"line2\": \"Near Central Park\",\n  \"city\": \"Bengaluru\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560001\",\n  \"isDefault\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('addressId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses", "{{addressId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home (updated)\",\n  \"line1\": \"221B Baker Street\",\n  \"line2\": \"Near Central Park\",\n  \"city\": \"Bengaluru\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560002\",\n  \"isDefault\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/addresses/{{addressId}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses", "{{addressId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Infra Health",
+      "item": [
+        {
+          "name": "api-gateway health",
+          "request": { "method": "GET", "url": { "raw": "http://localhost:8080/actuator/health", "host": ["localhost"], "port": "8080", "path": ["actuator", "health"] } }
+        },
+        {
+          "name": "discovery-server health",
+          "request": { "method": "GET", "url": { "raw": "http://localhost:8761/actuator/health", "host": ["localhost"], "port": "8761", "path": ["actuator", "health"] } }
+        },
+        {
+          "name": "config-server health",
+          "request": { "method": "GET", "url": { "raw": "http://localhost:8888/actuator/health", "host": ["localhost"], "port": "8888", "path": ["actuator", "health"] } }
+        },
+        {
+          "name": "auth-service health",
+          "request": { "method": "GET", "url": { "raw": "http://localhost:8081/actuator/health", "host": ["localhost"], "port": "8081", "path": ["actuator", "health"] } }
+        },
+        {
+          "name": "user-service health",
+          "request": { "method": "GET", "url": { "raw": "http://localhost:8082/actuator/health", "host": ["localhost"], "port": "8082", "path": ["actuator", "health"] } }
+        },
+        {
+          "name": "Eureka registry (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "http://localhost:8761/eureka/apps", "host": ["localhost"], "port": "8761", "path": ["eureka", "apps"] }
+          }
+        }
+      ]
+    }
+  ]
+}
