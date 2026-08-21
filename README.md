@@ -31,4 +31,4 @@ cd api-gateway && mvn spring-boot:run        # :8080
 
 ## Status
 
-Stage 1 (infra skeleton) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 2 (auth & user) — see `docs/BUILD_TRACKER.md` for current progress.

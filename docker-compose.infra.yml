@@ -64,14 +64,28 @@ services:
       - --node-id=0
       - --check=false
       - --kafka-addr=PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+      # Advertises localhost because every service currently runs on the
+      # host via `mvn spring-boot:run` (docker-compose.infra.yml only runs
+      # the data layer, per BUILD_TRACKER.md's stage order) and a Kafka
+      # client always reconnects using whatever address the broker
+      # advertises, not the one it originally dialed. This has to change to
+      # redpanda:9092 once app services run as containers on this same
+      # Docker network (docker-compose.prod.yml, Stage 19) — see
+      # study/2026-08-20-infra-fundamentals.html §5.4 for why the two
+      # addresses can differ at all.
+      - --advertise-kafka-addr=PLAINTEXT://localhost:9092
       - --pandaproxy-addr=PLAINTEXT://0.0.0.0:8082
       - --advertise-pandaproxy-addr=PLAINTEXT://redpanda:8082
       - --schema-registry-addr=PLAINTEXT://0.0.0.0:8081
     ports:
       - "9092:9092"
-      - "8081:8081"
-      - "8082:8082"
+      # Host-side only — container-internal pandaproxy/schema-registry stay
+      # on 8081/8082 (matches the --*-addr flags above and redpanda-console's
+      # internal access), but those host ports collide with auth-service
+      # (8081) and user-service (8082) once Stage 2 stands them up. Nothing
+      # outside this machine needs pandaproxy/schema-registry anyway.
+      - "18081:8081"
+      - "18082:8082"
     volumes:
       - vicinia-redpanda-data:/var/lib/redpanda/data
     healthcheck:

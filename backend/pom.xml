@@ -25,17 +25,22 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
     <!--
         Modules are added one at a time as each service is scaffolded per
-        BUILD_TRACKER.md's stage order. Stage 1: infra skeleton. Stage 2
-        (auth-service / user-service) onward adds one module per stage.
+        BUILD_TRACKER.md's stage order. Stage 1: infra skeleton. Stage 2 adds
+        `common` (shared JWT + internal-request-filter code, reused by every
+        domain service per ADR 0008/0014) plus auth-service and user-service.
     -->
     <modules>
         <module>config-server</module>
         <module>discovery-server</module>
         <module>api-gateway</module>
+        <module>common</module>
+        <module>auth-service</module>
+        <module>user-service</module>
     </modules>
 
     <dependencyManagement>
@@ -46,6 +51,26 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.vicinia</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

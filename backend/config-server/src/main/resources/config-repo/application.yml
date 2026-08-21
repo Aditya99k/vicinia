@@ -18,3 +18,19 @@ management:
   endpoint:
     health:
       show-details: always
+
+# --- Shared secrets (ARCHITECTURE.md §14 / ADR 0008) ---------------------
+# LOCAL DEV VALUES ONLY. Never commit real secrets this way for a real
+# deployment — this is the "environment variables for local/dev" stage;
+# a real secrets manager is an explicit Stage 20 deployment concern, not
+# designed before there's a deployment target.
+vicinia:
+  # Shared by every domain service's InternalRequestFilter and by
+  # api-gateway, which stamps this header on every proxied request —
+  # a request that skips the gateway won't carry it and gets rejected.
+  internal-secret: TznLNOT9PYknYa0Yy2V1Z7A4ap6VvaWTn23JgtA2Geo
+  jwt:
+    # Shared by auth-service (issues access tokens) and api-gateway
+    # (verifies them) — see common's JwtTokenProvider.
+    secret: kxFaHVsctq7ab39ZTZm7k_G_pk3cJvFt8K1eSqRP1mbhaEdFz6GRH_kGkjA19v-9
+    access-token-ttl-minutes: 15

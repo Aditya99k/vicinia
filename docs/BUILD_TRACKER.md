@@ -95,13 +95,15 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - **Done when:** gateway + eureka + config all show UP on `/actuator/health`, gateway dashboard shows itself registered. ✅ Verified locally: all three services report `UP`, api-gateway registered in Eureka as `API-GATEWAY`, config-server serves the shared config to it, and Postgres/Redis/Redpanda are all healthy with the 9 logical databases created.
 
 ### Stage 2 — Auth & User
-- [ ] `auth-service`: signup, login, refresh, logout, forgot/reset password
-- [ ] JWT issuing (access short-lived, refresh in Redis), token blacklist on logout
-- [ ] Internal-request-filter pattern applied (gateway-only access)
-- [ ] `user-service`: profile, address CRUD
-- [ ] Kafka: `user.registered`, `user.deleted` wired
-- [ ] RBAC: role + permission model (not just role string) in place
-- **Done when:** can sign up, log in, hit a protected user-service endpoint with the access token, refresh after expiry, and log out (token then rejected).
+- [x] `auth-service`: signup, login, refresh, logout, forgot/reset password
+- [x] JWT issuing (access short-lived, refresh in Redis), token blacklist on logout
+- [x] Internal-request-filter pattern applied (gateway-only access)
+- [x] `user-service`: profile, address CRUD
+- [x] Kafka: `user.registered`, `user.deleted` wired
+- [x] RBAC: role + permission model (not just role string) in place
+- **Done when:** can sign up, log in, hit a protected user-service endpoint with the access token, refresh after expiry, and log out (token then rejected). ✅ Verified locally end-to-end through api-gateway: signup → RBAC roles/permissions on the token → user-service profile auto-created via the `user.registered` Kafka event → refresh (old refresh token rejected after rotation) → new access token works → logout → same token now rejected (401). Also verified: duplicate-email signup (409), self-registering as ADMIN (400), wrong password (401), forgot/reset-password with one-time token, and that hitting auth-service/user-service directly on their own ports (bypassing the gateway) is rejected (403) by InternalRequestFilter.
+
+  Two real bugs found and fixed during verification: (1) `docker-compose.infra.yml` mapped Redpanda's pandaproxy/schema-registry to host ports 8081/8082, colliding with auth-service/user-service — remapped to 18081/18082. (2) Redpanda advertised `redpanda:9092` (only resolvable inside the Docker network), but services run on the host at this stage — changed to advertise `localhost:9092` with a comment noting this flips back to the container hostname once app services are containerized in Stage 19. Also caught a Spring bean-name collision: a custom `GatewayProperties` class collided with Spring Cloud Gateway's own internal bean of the same name — renamed to `PublicPathsProperties`.
 
 ### Stage 3 — Merchant
 - [ ] `merchant-service`: apply, document metadata, store profile, hours, radius
