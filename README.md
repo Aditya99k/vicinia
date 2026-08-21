@@ -22,12 +22,13 @@ docs/       Architecture, deployment, build tracker, ADRs
 ## Local Dev
 
 ```
-docker compose -f docker-compose.infra.yml up -d   # Postgres, Redis, Redpanda
-cd backend && mvn clean install -DskipTests
-cd discovery-server && mvn spring-boot:run   # :8761
-cd config-server && mvn spring-boot:run      # :8888
-cd api-gateway && mvn spring-boot:run        # :8080
+./start-infra.sh   # infra containers + build + every service, in dependency order
+./stop-infra.sh    # tears it all back down
 ```
+
+`start-infra.sh` is idempotent — safe to re-run if some services are already up, it'll skip what's already running. Logs land in `./logs/<service>.log`.
+
+**Maintenance:** when a new backend module is scaffolded, add one line to the `SERVICES` array near the top of `start-infra.sh`, in dependency order. `stop-infra.sh` needs no changes — it stops whatever's tracked in `.pids/`.
 
 ## Status
 

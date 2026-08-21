@@ -19,6 +19,10 @@ build/
 
 # Logs
 *.log
+logs/
+
+# start-infra.sh / stop-infra.sh PID tracking
+.pids/
 
 # Docker
 docker-compose.override.yml
