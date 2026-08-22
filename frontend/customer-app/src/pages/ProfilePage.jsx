@@ -56,11 +56,13 @@ export default function ProfilePage() {
   const initial = (auth?.email || '?').trim().charAt(0).toUpperCase();
 
   return (
-    <div>
+    <div className="profile-page">
       <div className="profile-header">
         <div className="profile-avatar">{initial}</div>
-        <h2>{profile?.fullName || 'Your profile'}</h2>
-        <div className="email">{auth?.email}</div>
+        <div>
+          <h2>{profile?.fullName || 'Your profile'}</h2>
+          <div className="email">{auth?.email}</div>
+        </div>
       </div>
 
       <div className="section-title"><span>Roles &amp; permissions</span></div>

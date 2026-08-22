@@ -1,27 +1,33 @@
 /* ============ Vicinia design tokens ============
    Blinkit-inspired: bold saturated yellow as the one accent, near-black
-   ink for high contrast, clean white surfaces, generous rounded corners,
-   big tap targets. Poppins for anything that should feel confident and
-   friendly (headings, buttons, brand); DM Sans for anything read at
-   length (body copy, form labels).
+   ink for high contrast, clean surfaces, generous rounded corners.
+   Built as a proper web app (wide layout, top nav) — not a phone frame.
+   Poppins for anything that should feel confident and friendly
+   (headings, buttons, brand); DM Sans for anything read at length.
+
+   Three-state theming: bare :root is the light palette (also the
+   fallback for the un-stamped "system" state); the prefers-color-scheme
+   block covers system dark; the [data-theme="dark"] block covers an
+   explicit toggle choice, so it wins in both directions.
 */
 :root {
-  --brand: #FFD400;
+  --brand: #F8C200;
   --brand-ink: #14151A;
-  --brand-soft: #FFF6D0;
+  --brand-soft: rgba(248, 194, 0, 0.16);
 
   --ink: #14151A;
-  --muted: #6B7280;
+  --muted: #666B76;
   --faint: #9AA1AC;
 
-  --bg: #F6F6F3;
+  --bg: #F7F7F5;
   --surface: #FFFFFF;
-  --line: #ECECE8;
+  --surface-2: #F1F1EE;
+  --line: #E7E7E3;
 
   --success: #0C9950;
-  --success-soft: #E4F7EC;
+  --success-soft: rgba(12, 153, 80, 0.12);
   --danger: #E5484D;
-  --danger-soft: #FDEBEC;
+  --danger-soft: rgba(229, 72, 77, 0.1);
 
   --radius-sm: 10px;
   --radius-md: 16px;
@@ -29,10 +35,64 @@
   --radius-pill: 999px;
 
   --shadow-card: 0 1px 2px rgba(20, 21, 26, 0.04), 0 8px 20px rgba(20, 21, 26, 0.06);
-  --shadow-pop: 0 12px 32px rgba(20, 21, 26, 0.16);
+  --shadow-pop: 0 16px 40px rgba(20, 21, 26, 0.18);
 
   --font-display: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --brand: #F8C200;
+    --brand-ink: #14151A;
+    --brand-soft: rgba(248, 194, 0, 0.14);
+
+    --ink: #F1F2F4;
+    --muted: #9BA3AF;
+    --faint: #6C7280;
+
+    --bg: #101114;
+    --surface: #1A1C20;
+    --surface-2: #202226;
+    --line: #2C2F35;
+
+    --success: #34C77A;
+    --success-soft: rgba(52, 199, 122, 0.14);
+    --danger: #FF6B6F;
+    --danger-soft: rgba(255, 107, 111, 0.14);
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+    --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --brand: #F8C200;
+  --brand-ink: #14151A;
+  --brand-soft: rgba(248, 194, 0, 0.14);
+
+  --ink: #F1F2F4;
+  --muted: #9BA3AF;
+  --faint: #6C7280;
+
+  --bg: #101114;
+  --surface: #1A1C20;
+  --surface-2: #202226;
+  --line: #2C2F35;
+
+  --success: #34C77A;
+  --success-soft: rgba(52, 199, 122, 0.14);
+  --danger: #FF6B6F;
+  --danger-soft: rgba(255, 107, 111, 0.14);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -43,6 +103,7 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; }
 p { margin: 0; }

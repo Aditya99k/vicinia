@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as authApi from '../api/auth';
+import { DeliveryIllustration } from '../components/Illustrations';
 
 function extractError(err, fallback) {
   return err?.response?.data?.error || fallback;
@@ -68,13 +69,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-screen">
-      <div className="auth-brand">
-        <span className="mark">V</span>
-        <span className="wordmark">Vicinia</span>
+    <div className="auth-page">
+      <div className="auth-illustration-panel">
+        <div className="badge-floating"><span className="dot" /> Delivery in 10 minutes</div>
+        <DeliveryIllustration />
+        <div className="tagline">
+          <h2>Groceries at the speed of now</h2>
+          <p>Fresh produce, everyday essentials, and local favorites — delivered from stores near you.</p>
+        </div>
       </div>
 
-      <div className="auth-card">
+      <div className="auth-form-panel">
+        <div className="auth-brand">
+          <span className="mark">V</span>
+          <span className="wordmark">Vicinia</span>
+        </div>
+
         {mode === 'login' && (
           <>
             <h1 className="auth-title">Welcome back</h1>
