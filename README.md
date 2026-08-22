@@ -21,14 +21,25 @@ docs/       Architecture, deployment, build tracker, ADRs
 
 ## Local Dev
 
+First time only — every secret is read from `.env` (gitignored, never committed):
+
 ```
-./start-infra.sh   # infra containers + build + every service, in dependency order
+cp .env.example .env
+# then fill in VICINIA_INTERNAL_SECRET and VICINIA_JWT_SECRET, e.g.
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"   # -> VICINIA_INTERNAL_SECRET
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # -> VICINIA_JWT_SECRET
+```
+
+Then:
+
+```
+./start-infra.sh   # loads .env, infra containers + build + every service, in dependency order
 ./stop-infra.sh    # tears it all back down
 ```
 
-`start-infra.sh` is idempotent — safe to re-run if some services are already up, it'll skip what's already running. Logs land in `./logs/<service>.log`.
+`start-infra.sh` refuses to start if `.env` is missing or incomplete, and is otherwise idempotent — safe to re-run if some services are already up, it'll skip what's already running. Logs land in `./logs/<service>.log`.
 
-**Maintenance:** when a new backend module is scaffolded, add one line to the `SERVICES` array near the top of `start-infra.sh`, in dependency order. `stop-infra.sh` needs no changes — it stops whatever's tracked in `.pids/`.
+**Maintenance:** when a new backend module is scaffolded, add one line to the `SERVICES` array near the top of `start-infra.sh`, in dependency order — and if it introduces a new secret, add it to both `.env.example` and `REQUIRED_ENV_VARS`. `stop-infra.sh` needs no changes — it stops whatever's tracked in `.pids/`.
 
 ## Status
 

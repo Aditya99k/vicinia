@@ -22,8 +22,14 @@ BACKEND_DIR="$SCRIPT_DIR/backend"
 LOG_DIR="$SCRIPT_DIR/logs"
 PID_DIR="$SCRIPT_DIR/.pids"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.infra.yml"
+ENV_FILE="$SCRIPT_DIR/.env"
 
 mkdir -p "$LOG_DIR" "$PID_DIR"
+
+# Every service reads secrets from the environment, not from committed
+# YAML (see docker-compose.infra.yml, config-repo/application.yml, and
+# each service's application.yml). All of them must be present in .env.
+REQUIRED_ENV_VARS=(POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB VICINIA_INTERNAL_SECRET VICINIA_JWT_SECRET)
 
 # name : module directory : port
 SERVICES=(
@@ -98,7 +104,33 @@ cat <<'EOF'
 EOF
 printf "${RESET}"
 
-# ── 1. Docker daemon ───────────────────────────────────────────────
+# ── 1. Secrets ───────────────────────────────────────────────────────
+section "Secrets (.env)"
+if [ ! -f "$ENV_FILE" ]; then
+  fail ".env not found — copy .env.example to .env and fill in real values:"
+  printf "      ${DIM}cp .env.example .env${RESET}\n"
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+missing=()
+for var in "${REQUIRED_ENV_VARS[@]}"; do
+  if [ -z "${!var:-}" ]; then
+    missing+=("$var")
+  fi
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+  fail "Missing values in .env for: ${missing[*]}"
+  printf "      ${DIM}see .env.example for how to generate each one${RESET}\n"
+  exit 1
+fi
+ok ".env loaded — ${#REQUIRED_ENV_VARS[@]} variables exported for Docker Compose and every service"
+
+# ── 2. Docker daemon ───────────────────────────────────────────────
 section "Docker daemon"
 if docker info >/dev/null 2>&1; then
   ok "already running"
@@ -113,14 +145,14 @@ else
   ok "Docker is up"
 fi
 
-# ── 2. Infra containers ────────────────────────────────────────────
+# ── 3. Infra containers ────────────────────────────────────────────
 section "Infra containers (Postgres, Redis, Redpanda)"
 docker compose -f "$COMPOSE_FILE" up -d 2>&1 | sed 's/^/  /'
 wait_for_container_health vicinia-postgres 60 || exit 1
 wait_for_container_health vicinia-redis 60 || exit 1
 wait_for_container_health vicinia-redpanda 60 || exit 1
 
-# ── 3. Build ────────────────────────────────────────────────────────
+# ── 4. Build ────────────────────────────────────────────────────────
 section "Build (mvn install — ensures every service builds against common's latest code)"
 if ( cd "$BACKEND_DIR" && mvn -q clean install -DskipTests ) > "$LOG_DIR/build.log" 2>&1; then
   ok "build succeeded"
@@ -129,7 +161,7 @@ else
   exit 1
 fi
 
-# ── 4. Spring Boot services, in order ──────────────────────────────
+# ── 5. Spring Boot services, in order ──────────────────────────────
 section "Application services"
 for entry in "${SERVICES[@]}"; do
   IFS=':' read -r name dir port <<< "$entry"
@@ -149,7 +181,7 @@ for entry in "${SERVICES[@]}"; do
   wait_for_http "$name" "$health_url" 120 || exit 1
 done
 
-# ── 5. Eureka registry snapshot ─────────────────────────────────────
+# ── 6. Eureka registry snapshot ─────────────────────────────────────
 # A service's /actuator/health can report UP slightly before its Eureka
 # registration has propagated, so retry briefly rather than checking once.
 section "Eureka registry"
@@ -166,7 +198,7 @@ else
   printf "  ${DIM}(nothing registered yet — give it a few seconds)${RESET}\n"
 fi
 
-# ── 6. Summary ───────────────────────────────────────────────────────
+# ── 7. Summary ───────────────────────────────────────────────────────
 printf "\n${BOLD}${GREEN}"
 cat <<'EOF'
   ╔══════════════════════════════════════════════════════╗
@@ -181,7 +213,7 @@ printf "  ${BOLD}%-18s${RESET} %s\n" "api-gateway" "http://localhost:8080"
 printf "  ${BOLD}%-18s${RESET} %s\n" "auth-service" "http://localhost:8081"
 printf "  ${BOLD}%-18s${RESET} %s\n" "user-service" "http://localhost:8082"
 echo
-printf "  ${BOLD}%-18s${RESET} %s\n" "postgres" "localhost:5432  (user/pass: vicinia/vicinia)"
+printf "  ${BOLD}%-18s${RESET} %s\n" "postgres" "localhost:5432  (user/pass: ${POSTGRES_USER}/${POSTGRES_PASSWORD})"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis" "localhost:6379"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis-commander" "http://localhost:9191"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redpanda" "localhost:9092"

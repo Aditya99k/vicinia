@@ -20,17 +20,24 @@ management:
       show-details: always
 
 # --- Shared secrets (ARCHITECTURE.md §14 / ADR 0008) ---------------------
-# LOCAL DEV VALUES ONLY. Never commit real secrets this way for a real
-# deployment — this is the "environment variables for local/dev" stage;
-# a real secrets manager is an explicit Stage 20 deployment concern, not
-# designed before there's a deployment target.
+# Values come from environment variables, not literals — see .env.example
+# at the repo root. Config Server serves this ${...} placeholder as a raw
+# string to whichever service asks for it; that service's OWN JVM
+# environment (its own OS env vars, exported by start-infra.sh from .env)
+# is what actually resolves it, at the point something does
+# @Value("${vicinia.jwt.secret}") — Config Server itself never needs
+# these values and never resolves them itself.
+#
+# A real secrets manager is an explicit Stage 20 deployment concern, not
+# designed before there's a deployment target — env vars are the correct
+# local-dev answer for now.
 vicinia:
   # Shared by every domain service's InternalRequestFilter and by
   # api-gateway, which stamps this header on every proxied request —
   # a request that skips the gateway won't carry it and gets rejected.
-  internal-secret: TznLNOT9PYknYa0Yy2V1Z7A4ap6VvaWTn23JgtA2Geo
+  internal-secret: ${VICINIA_INTERNAL_SECRET}
   jwt:
     # Shared by auth-service (issues access tokens) and api-gateway
     # (verifies them) — see common's JwtTokenProvider.
-    secret: kxFaHVsctq7ab39ZTZm7k_G_pk3cJvFt8K1eSqRP1mbhaEdFz6GRH_kGkjA19v-9
+    secret: ${VICINIA_JWT_SECRET}
     access-token-ttl-minutes: 15

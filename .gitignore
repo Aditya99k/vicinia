@@ -14,8 +14,11 @@ target/
 node_modules/
 dist/
 build/
+
+# Secrets — never commit real values. See .env.example for the template.
 .env
 .env.local
+.env.*.local
 
 # Logs
 *.log

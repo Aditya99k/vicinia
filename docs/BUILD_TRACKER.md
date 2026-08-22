@@ -244,6 +244,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 | 13 | Postgres self-hosted (9 logical DBs) instead of managed free tier (autosuspend risk) |
 | 14 | MongoDB stays on Atlas M0 (managed, no reason to self-host) |
 | 15 | Frontend: Cloudflare Pages; Gateway exposure: Cloudflare Tunnel |
+| 16 | Secrets (Postgres credentials, internal-request secret, JWT signing key) sourced from a gitignored `.env`, never committed as YAML literals |
 
 ## 4. How to Use This File
 
