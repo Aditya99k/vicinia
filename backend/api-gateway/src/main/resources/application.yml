@@ -15,6 +15,23 @@ spring:
       discovery:
         locator:
           enabled: false
+      # Local dev only — lets frontend/customer-app (Vite on :5173) call the
+      # gateway from the browser. A real deployment locks this down to the
+      # actual frontend origin (Cloudflare Pages URL), per DEPLOYMENT.md.
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
       routes:
         # Skeleton routes for all 13 domain services (Stage 1 — no filters,
         # no auth/rate-limiting yet, added in Stage 2 and Stage 15).

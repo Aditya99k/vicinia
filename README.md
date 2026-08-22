@@ -41,6 +41,14 @@ Then:
 
 **Maintenance:** when a new backend module is scaffolded, add one line to the `SERVICES` array near the top of `start-infra.sh`, in dependency order — and if it introduces a new secret, add it to both `.env.example` and `REQUIRED_ENV_VARS`. `stop-infra.sh` needs no changes — it stops whatever's tracked in `.pids/`.
 
+### Frontend (validation only)
+
+`frontend/customer-app` is a real React app for clicking through what's built so far (signup, login, profile, addresses) — not the full Stage 18 build. See its own [README](frontend/customer-app/README.md).
+
+```
+cd frontend/customer-app && npm install && npm run dev   # http://localhost:5173
+```
+
 ## Status
 
 Stage 2 (auth & user) — see `docs/BUILD_TRACKER.md` for current progress.
