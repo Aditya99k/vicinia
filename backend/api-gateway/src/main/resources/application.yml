@@ -18,11 +18,20 @@ spring:
       # Local dev only — lets frontend/customer-app (Vite on :5173) call the
       # gateway from the browser. A real deployment locks this down to the
       # actual frontend origin (Cloudflare Pages URL), per DEPLOYMENT.md.
+      #
+      # allowedOriginPatterns (not allowedOrigins) with a "*" host wildcard,
+      # not a fixed IP list — the browser sends whatever Origin the page
+      # was actually loaded from (localhost on a PC, whatever LAN IP a
+      # phone is on), and that changes every time the Mac switches Wi-Fi
+      # networks. Matching any host on :5173 means this never needs
+      # updating again; unlike allowedOrigins: "*", allowedOriginPatterns
+      # still reflects back the specific matched origin (not a literal
+      # "*"), so it's valid to combine with allowCredentials: true.
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins:
-              - "http://localhost:5173"
+            allowedOriginPatterns:
+              - "http://*:5173"
             allowedMethods:
               - GET
               - POST
