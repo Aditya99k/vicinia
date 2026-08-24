@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 4 (catalog) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 5 (inventory) — see `docs/BUILD_TRACKER.md` for current progress.

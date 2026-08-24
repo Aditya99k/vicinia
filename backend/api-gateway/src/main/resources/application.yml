@@ -124,6 +124,7 @@ vicinia:
       - /api/catalog/products/search
       - /api/catalog/categories
       - /api/merchants/nearby
+      - /api/inventory/listings/product/*
 
 management:
   endpoints:

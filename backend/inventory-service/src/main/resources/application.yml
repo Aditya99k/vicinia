@@ -1,0 +1,59 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: inventory-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/inventory_db
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      # First consumer in the project (product.created) — group-id
+      # "inventory-service" so this is a brand-new consumer group. earliest
+      # is deliberate, not the default "latest": catalog-service has already
+      # published product.created events from Stage 4's own testing, before
+      # this service existed, and those existing products need to land in
+      # the local KnownProduct cache on first boot too, not just future ones.
+      group-id: inventory-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.vicinia.*"
+        spring.json.value.default.type: com.vicinia.inventoryservice.messaging.ProductEventConsumer$ProductEnvelope
+        spring.json.use.type.headers: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+vicinia:
+  inventory:
+    # ADR 0002 — publish inventory.low once available stock drops to/below
+    # this many units, inventory.out at exactly zero.
+    low-stock-threshold: 5
+    # ADR 0003 — a PAYMENT_PENDING reservation older than this is considered
+    # abandoned (payment never completed) and gets released by the reaper.
+    reservation-timeout-minutes: 15
+    reaper-interval-ms: 90000

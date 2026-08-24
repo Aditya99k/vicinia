@@ -43,6 +43,7 @@
         <module>user-service</module>
         <module>merchant-service</module>
         <module>catalog-service</module>
+        <module>inventory-service</module>
     </modules>
 
     <dependencyManagement>

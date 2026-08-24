@@ -42,6 +42,7 @@ SERVICES=(
   "user-service:user-service:8082"
   "merchant-service:merchant-service:8083"
   "catalog-service:catalog-service:8084"
+  "inventory-service:inventory-service:8085"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────
