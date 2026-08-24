@@ -13,6 +13,18 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    # This service never published anything of its own until Stage 10 —
+    # @RetryableTopic republishes a failed message to its retry/DLT topics
+    # internally, which needs a real producer. Without this block, Spring
+    # Boot's autoconfigured KafkaTemplate defaults to a plain StringSerializer,
+    # and republishing a deserialized OrderEventEnvelope object through it
+    # throws ClassCastException — found by actually triggering the DLQ test,
+    # not by inspection (see BUILD_TRACKER.md Stage 10's notes).
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
     consumer:
       group-id: cart-service
       # Deliberately the default (latest), not earliest like inventory-service/

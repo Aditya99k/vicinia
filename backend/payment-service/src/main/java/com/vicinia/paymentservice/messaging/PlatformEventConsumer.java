@@ -3,7 +3,10 @@ package com.vicinia.paymentservice.messaging;
 import com.vicinia.paymentservice.service.WalletService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -25,6 +28,21 @@ import java.util.UUID;
  * event-driven by design (§8's REST-vs-Kafka rule): order-service doesn't
  * need the refund's result to decide what to do next, it just needs the
  * cancellation to eventually be reflected in the customer's balance.
+ *
+ * @RetryableTopic (Stage 10): one method, two source topics — Spring Kafka
+ * builds an independent retry and DLT topic chain per source topic
+ * (separately for user-events and for order-events), which is the correct
+ * behavior here: a failure consuming a user.registered event shouldn't be
+ * conflated with a failure consuming an order.cancelled event even though
+ * one listener method handles both. Explicit, service-qualified retry/DLT
+ * suffixes, not Spring Kafka's default naming — both source topics here
+ * are also consumed by a different service's own @RetryableTopic listener
+ * (user-service on user-events, cart-service on order-events), and the
+ * default naming is source-topic-based, not consumer-group-based, so
+ * without this every pair of consumer groups sharing a topic would collide
+ * onto one shared DLT — confirmed by actually triggering a cart-service
+ * failure and seeing it show up in this service's own @DltHandler logs
+ * too, before this fix. See BUILD_TRACKER.md's Stage 10 notes.
  */
 @Component
 public class PlatformEventConsumer {
@@ -37,6 +55,8 @@ public class PlatformEventConsumer {
         this.walletService = walletService;
     }
 
+    @RetryableTopic(attempts = "4", backoff = @Backoff(delay = 2000, multiplier = 2.0), autoCreateTopics = "true",
+            retryTopicSuffix = "-payment-service-retry", dltTopicSuffix = "-payment-service-dlt")
     @KafkaListener(topics = {"user-events", "order-events"}, groupId = "payment-service")
     public void onEvent(PlatformEventEnvelope envelope) {
         switch (envelope.eventType()) {
@@ -44,6 +64,12 @@ public class PlatformEventConsumer {
             case "order.cancelled" -> handleOrderCancelled(envelope);
             default -> log.debug("Ignoring unrecognized eventType '{}'", envelope.eventType());
         }
+    }
+
+    @DltHandler
+    public void onDlt(PlatformEventEnvelope envelope) {
+        log.error("payment-service message moved to DLQ after exhausting retries: eventId={} eventType={}",
+                envelope.eventId(), envelope.eventType());
     }
 
     private void handleUserRegistered(PlatformEventEnvelope envelope) {

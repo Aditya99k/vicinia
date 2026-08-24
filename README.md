@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 9 (payment — Razorpay) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 10 (event-driven wiring pass) — see `docs/BUILD_TRACKER.md` for current progress.

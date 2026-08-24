@@ -65,5 +65,11 @@
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
+        <dependency>
+            <!-- Required by @RetryableTopic (Stage 10 — non-blocking retry
+                 topics + DLQ, ARCHITECTURE.md §9). -->
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
     </dependencies>
 </project>

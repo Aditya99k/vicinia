@@ -18,6 +18,17 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    # This service never published anything of its own — same latent gap
+    # found and fixed in cart-service's application.yml (see its comment
+    # and BUILD_TRACKER.md's Stage 10 notes): @RetryableTopic republishes a
+    # failed message internally, which needs a real producer, and without
+    # this block Spring Boot's autoconfigured KafkaTemplate defaults to a
+    # plain StringSerializer that can't serialize a deserialized envelope object.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
     consumer:
       group-id: user-service
       auto-offset-reset: earliest
