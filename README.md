@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 6 (cart) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 7 (coupons) — see `docs/BUILD_TRACKER.md` for current progress.

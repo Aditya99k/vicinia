@@ -44,6 +44,7 @@ SERVICES=(
   "catalog-service:catalog-service:8084"
   "inventory-service:inventory-service:8085"
   "cart-service:cart-service:8086"
+  "coupon-service:coupon-service:8087"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────

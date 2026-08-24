@@ -45,6 +45,7 @@
         <module>catalog-service</module>
         <module>inventory-service</module>
         <module>cart-service</module>
+        <module>coupon-service</module>
     </modules>
 
     <dependencyManagement>
