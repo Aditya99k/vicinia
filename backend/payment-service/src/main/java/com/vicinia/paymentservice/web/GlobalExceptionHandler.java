@@ -1,6 +1,8 @@
 package com.vicinia.paymentservice.web;
 
 import com.vicinia.paymentservice.exception.InsufficientBalanceException;
+import com.vicinia.paymentservice.exception.RazorpayPaymentNotFoundException;
+import com.vicinia.paymentservice.exception.RazorpaySignatureInvalidException;
 import com.vicinia.paymentservice.exception.WalletNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<Map<String, Object>> handleInsufficientBalance(RuntimeException e) {
         return body(HttpStatus.PAYMENT_REQUIRED, e.getMessage());
+    }
+
+    @ExceptionHandler(RazorpayPaymentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRazorpayNotFound(RuntimeException e) {
+        return body(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(RazorpaySignatureInvalidException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidSignature(RuntimeException e) {
+        return body(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

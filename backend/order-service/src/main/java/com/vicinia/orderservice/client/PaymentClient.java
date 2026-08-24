@@ -36,9 +36,22 @@ public class PaymentClient {
                 "http://PAYMENT-SERVICE/api/payments/wallet/refund", new RefundRequest(userId, orderId, amount), Void.class);
     }
 
+    /** Genuinely async from here — no success/failure to branch on synchronously, the order stays PAYMENT_PENDING until the webhook resolves it (see PaymentEventConsumer). */
+    public RazorpayOrderResponse createRazorpayOrder(UUID userId, UUID orderId, BigDecimal amount) {
+        return restTemplate.postForObject(
+                "http://PAYMENT-SERVICE/api/payments/razorpay/order",
+                new RazorpayOrderRequest(userId, orderId, amount), RazorpayOrderResponse.class);
+    }
+
     public record PayRequest(UUID userId, UUID orderId, BigDecimal amount) {
     }
 
     public record RefundRequest(UUID userId, UUID orderId, BigDecimal amount) {
+    }
+
+    public record RazorpayOrderRequest(UUID userId, UUID orderId, BigDecimal amount) {
+    }
+
+    public record RazorpayOrderResponse(UUID orderId, String razorpayOrderId, String razorpayKeyId, BigDecimal amount, String currency) {
     }
 }

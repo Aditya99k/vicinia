@@ -125,6 +125,14 @@ vicinia:
       - /api/catalog/categories
       - /api/merchants/nearby
       - /api/inventory/listings/product/*
+      # Razorpay's own servers call this, not a logged-in user — it will
+      # never carry a JWT. Security here is entirely the HMAC-SHA256
+      # signature check in payment-service's RazorpayPaymentService, not
+      # gateway auth. The gateway still unconditionally stamps
+      # X-Internal-Secret on every proxied request regardless of
+      # public/private path, so this passes InternalRequestFilter with no
+      # changes needed there — see RazorpayWebhookController's comment.
+      - /api/payments/razorpay/webhook
 
 management:
   endpoints:

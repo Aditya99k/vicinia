@@ -23,6 +23,22 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+    consumer:
+      # Stage 9's first order-service consumer: payment-events, for the
+      # Razorpay path specifically (wallet stays synchronous, unaffected —
+      # see PaymentEventConsumer). Deliberately latest, not earliest — same
+      # reasoning as cart-service's order.confirmed consumer: any
+      # historical payment.success/failed either already resolved that
+      # order (idempotent no-op via the PAYMENT_PENDING status guard) or
+      # was wallet-originated (filtered out by method), so there's no real
+      # catch-up value in replaying Stage 8's backlog.
+      group-id: order-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.orderservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.orderservice.messaging.PaymentEventEnvelope
 
 management:
   endpoints:

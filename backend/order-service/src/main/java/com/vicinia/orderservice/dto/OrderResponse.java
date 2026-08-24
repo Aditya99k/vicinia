@@ -20,15 +20,23 @@ public record OrderResponse(
         BigDecimal totalAmount,
         String cancellationReason,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String razorpayOrderId,
+        String razorpayKeyId
 ) {
     public static OrderResponse from(Order order) {
+        return from(PlaceOrderResult.wallet(order));
+    }
+
+    public static OrderResponse from(PlaceOrderResult result) {
+        Order order = result.order();
         return new OrderResponse(
                 order.getId(), order.getUserId(), order.getMerchantId(), order.getStatus(),
                 order.getItems().stream().map(OrderItemResponse::from).toList(),
                 order.getSubtotal(), order.getDiscountAmount(), order.getCouponCode(),
                 order.getTotalAmount(), order.getCancellationReason(),
-                order.getCreatedAt(), order.getUpdatedAt()
+                order.getCreatedAt(), order.getUpdatedAt(),
+                result.razorpayOrderId(), result.razorpayKeyId()
         );
     }
 }

@@ -1,10 +1,10 @@
 package com.vicinia.orderservice.web;
 
 import com.vicinia.common.security.HeaderNames;
-import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.dto.CancelOrderRequest;
 import com.vicinia.orderservice.dto.OrderResponse;
 import com.vicinia.orderservice.dto.PlaceOrderRequest;
+import com.vicinia.orderservice.dto.PlaceOrderResult;
 import com.vicinia.orderservice.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -34,8 +34,8 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> place(@RequestHeader(HeaderNames.USER_ID) String userId,
                                                 @RequestBody PlaceOrderRequest request) {
-        Order order = orderService.placeOrder(UUID.fromString(userId), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.from(order));
+        PlaceOrderResult result = orderService.placeOrder(UUID.fromString(userId), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(OrderResponse.from(result));
     }
 
     @GetMapping("/mine")

@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 8 (order orchestrator) — see `docs/BUILD_TRACKER.md` for current progress. A minimal wallet-only `payment-service` slice (Stage 9) was pulled forward to unblock Stage 8's own checkout verification.
+Stage 9 (payment — Razorpay) — see `docs/BUILD_TRACKER.md` for current progress.

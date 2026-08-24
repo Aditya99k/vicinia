@@ -7,7 +7,9 @@ import com.vicinia.orderservice.client.PaymentClient;
 import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.domain.OrderItem;
 import com.vicinia.orderservice.domain.OrderStatus;
+import com.vicinia.orderservice.dto.PaymentMethod;
 import com.vicinia.orderservice.dto.PlaceOrderRequest;
+import com.vicinia.orderservice.dto.PlaceOrderResult;
 import com.vicinia.orderservice.exception.CartHasUnavailableItemsException;
 import com.vicinia.orderservice.exception.EmptyCartException;
 import com.vicinia.orderservice.exception.ForbiddenException;
@@ -65,7 +67,7 @@ public class OrderService {
         this.eventPublisher = eventPublisher;
     }
 
-    public Order placeOrder(UUID userId, PlaceOrderRequest request) {
+    public PlaceOrderResult placeOrder(UUID userId, PlaceOrderRequest request) {
         CartClient.CartView cart = cartClient.getCart(userId);
         if (cart.items().isEmpty()) {
             throw new EmptyCartException();
@@ -80,7 +82,7 @@ public class OrderService {
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
             Optional<BigDecimal> discount = couponClient.apply(userId, request.couponCode(), order.getId(), cart.subtotal());
             if (discount.isEmpty()) {
-                return cancelOrder(order, "Coupon rejected: " + request.couponCode());
+                return PlaceOrderResult.wallet(cancelOrder(order, "Coupon rejected: " + request.couponCode()));
             }
             order = applyCoupon(order, request.couponCode(), discount.get());
         }
@@ -91,21 +93,55 @@ public class OrderService {
 
         boolean reserved = inventoryClient.reserve(order.getId(), reserveItems);
         if (!reserved) {
-            return cancelOrder(order, "Insufficient stock");
+            return PlaceOrderResult.wallet(cancelOrder(order, "Insufficient stock"));
         }
 
         order = markPaymentPending(order);
 
+        PaymentMethod method = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.WALLET;
+
+        if (method == PaymentMethod.RAZORPAY) {
+            var razorpayOrder = paymentClient.createRazorpayOrder(userId, order.getId(), order.getTotalAmount());
+            return new PlaceOrderResult(order, razorpayOrder.razorpayOrderId(), razorpayOrder.razorpayKeyId());
+        }
+
         boolean paid = paymentClient.payWithWallet(userId, order.getId(), order.getTotalAmount());
         if (!paid) {
             inventoryClient.release(order.getId());
-            return markPaymentFailed(order);
+            return PlaceOrderResult.wallet(markPaymentFailed(order));
         }
 
         inventoryClient.confirm(order.getId());
         Order confirmed = markConfirmed(order);
         eventPublisher.publishConfirmed(confirmed.getId(), userId);
-        return confirmed;
+        return PlaceOrderResult.wallet(confirmed);
+    }
+
+    /**
+     * Reached only via PaymentEventConsumer, for the Razorpay path — wallet
+     * never needs this, its own synchronous flow above already confirms or
+     * fails the order in the same request. Idempotent exactly per ADR
+     * 0004/§4.6: only acts while the order is still PAYMENT_PENDING, so a
+     * replayed webhook-driven event is a safe no-op rather than an
+     * illegal-transition error.
+     */
+    public void confirmFromPaymentEvent(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+            return;
+        }
+        inventoryClient.confirm(orderId);
+        Order confirmed = markConfirmed(order);
+        eventPublisher.publishConfirmed(confirmed.getId(), confirmed.getUserId());
+    }
+
+    public void failFromPaymentEvent(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+            return;
+        }
+        inventoryClient.release(orderId);
+        markPaymentFailed(order);
     }
 
     public Order getById(UUID orderId, UUID userId) {

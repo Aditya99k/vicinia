@@ -73,7 +73,7 @@ public class WalletService {
 
         int debited = walletRepository.tryDebit(userId, amount);
         if (debited == 0) {
-            eventPublisher.publishFailed(orderId, userId, amount);
+            eventPublisher.publishFailed(orderId, userId, amount, "WALLET");
             throw new InsufficientBalanceException(userId);
         }
 
@@ -91,7 +91,7 @@ public class WalletService {
             transaction = transactionRepository.findById(transactionId).orElseThrow(() -> new WalletNotFoundException(userId));
         }
 
-        eventPublisher.publishSuccess(orderId, userId, amount);
+        eventPublisher.publishSuccess(orderId, userId, amount, "WALLET");
         return transaction;
     }
 
