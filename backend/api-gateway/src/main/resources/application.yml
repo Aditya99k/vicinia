@@ -106,9 +106,13 @@ eureka:
   instance:
     prefer-ip-address: true
 
-# Paths that do NOT require a validated JWT once the auth filter is added
-# in Stage 2 (ARCHITECTURE.md §14 — every other route trusts X-User-Id
-# injected by the gateway from a validated token, never a client-supplied one).
+# Paths that do NOT require a validated JWT (ARCHITECTURE.md §14 — every
+# other route trusts X-User-Id injected by the gateway from a validated
+# token, never a client-supplied one). This list was a placeholder guess
+# made in Stage 1 before catalog-service's real endpoint shape existed —
+# /api/catalog/** was too broad, since it would have also exempted
+# product-creation-requests and admin moderation, which need auth. Narrowed
+# in Stage 4 to just the two actually-public browse endpoints.
 vicinia:
   gateway:
     public-paths:
@@ -117,7 +121,8 @@ vicinia:
       - /api/auth/refresh
       - /api/auth/forgot-password
       - /api/auth/reset-password
-      - /api/catalog/**
+      - /api/catalog/products/search
+      - /api/catalog/categories
       - /api/merchants/nearby
 
 management:

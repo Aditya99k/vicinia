@@ -11,10 +11,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Seeds the 4 V1 roles and their permission bundles on first boot
+ * Seeds/updates the V1 roles and their permission bundles on every boot
  * (ARCHITECTURE.md §2). Modeling this as role -> permission-set from day
  * one is what makes a future SUPPORT_AGENT or MERCHANT_STAFF role a new
- * seeded row instead of a schema migration (ADR 0006).
+ * seeded row instead of a schema migration (ADR 0006) — and it's also
+ * exactly why this runs as an upsert on every boot rather than only once
+ * against an empty table: a later service (catalog-service, Stage 4) can
+ * add a brand-new permission to an existing role (ADMIN + CATALOG_MANAGE)
+ * without anyone needing to wipe and reseed the auth database by hand.
  */
 @Component
 public class RoleSeeder implements CommandLineRunner {
@@ -23,7 +27,7 @@ public class RoleSeeder implements CommandLineRunner {
             "CUSTOMER", List.of("ORDER_PLACE", "ORDER_VIEW_OWN", "PROFILE_MANAGE"),
             "MERCHANT", List.of("STORE_MANAGE", "LISTING_MANAGE", "ORDER_FULFILL", "PROFILE_MANAGE"),
             "DELIVERY_PARTNER", List.of("DELIVERY_MANAGE", "PROFILE_MANAGE"),
-            "ADMIN", List.of("MERCHANT_APPROVE", "USER_MANAGE", "COUPON_MANAGE",
+            "ADMIN", List.of("MERCHANT_APPROVE", "USER_MANAGE", "COUPON_MANAGE", "CATALOG_MANAGE",
                     "ORDER_VIEW_ALL", "PAYMENT_VIEW", "REFUND_INITIATE")
     );
 
@@ -37,11 +41,8 @@ public class RoleSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (roleRepository.count() > 0) {
-            return;
-        }
         ROLE_PERMISSIONS.forEach((roleName, permissionNames) -> {
-            Role role = new Role(roleName);
+            Role role = roleRepository.findByName(roleName).orElseGet(() -> new Role(roleName));
             for (String permissionName : permissionNames) {
                 Permission permission = permissionRepository.findByName(permissionName)
                         .orElseGet(() -> permissionRepository.save(new Permission(permissionName)));

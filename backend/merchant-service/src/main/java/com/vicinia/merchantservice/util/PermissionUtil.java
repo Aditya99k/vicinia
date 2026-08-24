@@ -2,23 +2,14 @@ package com.vicinia.merchantservice.util;
 
 import com.vicinia.merchantservice.exception.ForbiddenException;
 
-import java.util.Arrays;
-
-/**
- * api-gateway injects X-User-Permissions as a comma-separated list from the
- * verified JWT (ARCHITECTURE.md §14) — this is a plain header check, not a
- * Spring Security authorization framework, matching the hand-rolled style
- * already used for JWT/internal-secret handling elsewhere in the system.
- */
+/** Thin wrapper: the actual header-parsing logic lives in common (shared with catalog-service and beyond); the exception thrown stays local to this service. */
 public final class PermissionUtil {
 
     private PermissionUtil() {
     }
 
     public static void require(String permissionsHeader, String required) {
-        boolean has = permissionsHeader != null
-                && Arrays.asList(permissionsHeader.split(",")).contains(required);
-        if (!has) {
+        if (!com.vicinia.common.security.PermissionUtil.hasPermission(permissionsHeader, required)) {
             throw new ForbiddenException("Requires the " + required + " permission");
         }
     }

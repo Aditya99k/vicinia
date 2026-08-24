@@ -1,0 +1,35 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: catalog-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  data:
+    mongodb:
+      # Self-hosted locally for dev (docker-compose.infra.yml) — DEPLOYMENT.md's
+      # documented final state is Atlas M0 even for local dev, but Atlas setup
+      # is explicitly a Stage 20 task in BUILD_TRACKER.md, not Stage 4. This
+      # env var is how that switch happens later with zero code changes:
+      # set MONGODB_URI in .env to a real Atlas connection string and this
+      # default is never used.
+      uri: ${MONGODB_URI:mongodb://localhost:27017/catalog_db}
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

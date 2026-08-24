@@ -115,11 +115,17 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
   One known gap surfaced during testing, not a Stage 3 blocker: there's no admin-account bootstrap flow yet — the ADMIN role had to be granted directly via SQL for testing. Worth a real fix (a seed admin, or an invite-only admin-creation endpoint) before any real deployment, but out of scope for the merchant-service work itself.
 
 ### Stage 4 — Catalog
-- [ ] `catalog-service` (MongoDB/Atlas): global product schema, categories
-- [ ] Search endpoint (by name/category)
-- [ ] Admin/merchant product-creation-request flow (moderation gate)
-- [ ] Kafka: `product.created`
-- **Done when:** a product can be created and found via search; catalog is queryable without any merchant-specific data attached.
+- [x] `catalog-service` (MongoDB/Atlas): global product schema, categories
+- [x] Search endpoint (by name/category)
+- [x] Admin/merchant product-creation-request flow (moderation gate)
+- [x] Kafka: `product.created`
+- **Done when:** a product can be created and found via search; catalog is queryable without any merchant-specific data attached. ✅ Verified end-to-end through the gateway: 8 seeded categories and empty search both public with no token; unauthenticated product-request → 401; direct hit on catalog-service bypassing the gateway → 403 (`InternalRequestFilter`). Admin-created product → auto-`APPROVED`, immediately visible in search; unknown-category product → 400. Non-admin (no `CATALOG_MANAGE`) hitting an admin endpoint → 403. Merchant product-creation-request → `PENDING_REVIEW`, correctly absent from search and from the pending-not-yet-reviewed set; admin approve → `APPROVED`, now in search, `product.created` published to `product-events` and confirmed by actually consuming it off Redpanda; re-approving an already-`APPROVED` product → 409 (illegal transition). Separate reject flow: `PENDING_REVIEW → REJECTED` with a reason, stays out of search, and — confirmed by consuming the topic — does *not* publish an event (only approvals do). Admin category creation → 201, duplicate name → 409.
+
+  MongoDB is self-hosted locally (`docker-compose.infra.yml`'s new `mongo` service) rather than Atlas — a deliberate, documented deviation from DEPLOYMENT.md's "Atlas even for local dev" default, since standing up a real Atlas cluster is explicitly a Stage 20 task, not a Stage 4 one; switching later is a one-line `MONGODB_URI` change with zero code changes.
+
+  Two real issues caught and fixed during this stage, both before any functional testing: (1) api-gateway's public-paths list still had the Stage-1 placeholder `/api/catalog/**`, which would have exempted the new admin/merchant-protected catalog endpoints from JWT validation entirely — narrowed to the two actually-public browse endpoints. (2) `RoleSeeder` only ran its upsert once (`if (roleRepository.count() > 0) return`), so the new `CATALOG_MANAGE` permission would never have reached the `ADMIN` role on an already-seeded database — changed to an idempotent per-role/per-permission upsert that runs safely every boot. Also extracted the permission-header-parsing logic (previously duplicated between merchant-service and now catalog-service) into `common.security.PermissionUtil`, with each service keeping a thin wrapper for its own exception type.
+
+  A handful of 503s showed up during manual testing, both right after a fresh `start-infra.sh` run and again after the dev machine woke from sleep mid-session — both times a plain retry succeeded. This is Spring Cloud LoadBalancer's client-side server cache lagging Eureka's registry (a missed-heartbeat/re-registration gap after a sleep, or the normal registration-propagation delay right after a service starts) rather than a routing or code bug — the same class of transient timing issue already seen and worked around in `start-infra.sh`'s Eureka-registry-snapshot retry loop.
 
 ### Stage 5 — Inventory (highest-risk stage — test concurrency explicitly)
 - [ ] `inventory-service` (Postgres): MerchantListing (price, stock per merchant-product)

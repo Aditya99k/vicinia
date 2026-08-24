@@ -42,6 +42,7 @@
         <module>auth-service</module>
         <module>user-service</module>
         <module>merchant-service</module>
+        <module>catalog-service</module>
     </modules>
 
     <dependencyManagement>

@@ -1,7 +1,14 @@
-# Local/dev infra for Vicinia — Redis, Redpanda (Kafka-protocol-compatible),
-# and Postgres. Mirrors what DEPLOYMENT.md self-hosts on the Oracle VM in
-# production; MongoDB is deliberately NOT here — it's Atlas M0 (managed)
-# even locally, see DEPLOYMENT.md §3.
+# Local/dev infra for Vicinia — Postgres, Redis, Redpanda (Kafka-protocol-
+# compatible), and MongoDB.
+#
+# MongoDB here is a *local dev* choice, distinct from DEPLOYMENT.md's
+# documented deployed state (Atlas M0, even for local dev — §3). Standing
+# up a real Atlas cluster is explicitly a Stage 20 task in
+# docs/BUILD_TRACKER.md, not a Stage 4 one — self-hosting it here for now
+# avoids blocking catalog-service's build on an external account signup
+# that was never meant to happen until deployment anyway. Switching to
+# Atlas later is a one-line .env change (MONGODB_URI) with zero code
+# changes — see catalog-service's application.yml.
 #
 # Credentials come from .env (gitignored) — Compose loads it automatically
 # since it sits next to this file. See .env.example for the template.
@@ -108,7 +115,25 @@ services:
     depends_on:
       - redpanda
 
+  mongo:
+    image: mongo:7
+    container_name: vicinia-mongo
+    restart: unless-stopped
+    # No auth locally — same posture as the self-hosted Redis, not exposed
+    # beyond localhost. Swap for a real Atlas connection string via
+    # MONGODB_URI when this stops being purely local dev (Stage 20).
+    ports:
+      - "27017:27017"
+    volumes:
+      - vicinia-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   vicinia-postgres-data:
   vicinia-redis-data:
   vicinia-redpanda-data:
+  vicinia-mongo-data:

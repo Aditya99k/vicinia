@@ -41,6 +41,7 @@ SERVICES=(
   "auth-service:auth-service:8081"
   "user-service:user-service:8082"
   "merchant-service:merchant-service:8083"
+  "catalog-service:catalog-service:8084"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────
@@ -149,11 +150,12 @@ else
 fi
 
 # ── 3. Infra containers ────────────────────────────────────────────
-section "Infra containers (Postgres, Redis, Redpanda)"
+section "Infra containers (Postgres, Redis, Redpanda, MongoDB)"
 docker compose -f "$COMPOSE_FILE" up -d 2>&1 | sed 's/^/  /'
 wait_for_container_health vicinia-postgres 60 || exit 1
 wait_for_container_health vicinia-redis 60 || exit 1
 wait_for_container_health vicinia-redpanda 60 || exit 1
+wait_for_container_health vicinia-mongo 60 || exit 1
 
 # ── 4. Build ────────────────────────────────────────────────────────
 section "Build (mvn install — ensures every service builds against common's latest code)"
@@ -254,6 +256,7 @@ if [ -n "$LAN_IP" ]; then
 fi
 echo
 printf "  ${BOLD}%-18s${RESET} %s\n" "postgres" "localhost:5432  (user/pass: ${POSTGRES_USER}/${POSTGRES_PASSWORD})"
+printf "  ${BOLD}%-18s${RESET} %s\n" "mongo" "localhost:27017"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis" "localhost:6379"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis-commander" "http://localhost:9191"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redpanda" "localhost:9092"
