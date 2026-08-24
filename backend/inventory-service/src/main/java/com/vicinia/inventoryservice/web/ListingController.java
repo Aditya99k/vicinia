@@ -27,9 +27,11 @@ import java.util.UUID;
  * seeded onto the MERCHANT role in auth-service's RoleSeeder — Stage 2).
  * merchantId is always the caller's own X-User-Id, never a client-supplied
  * value — see MerchantListing's class comment for why that correlation is
- * safe. /product/{productId} is the one public, unauthenticated read here
- * (api-gateway's public-paths), matching the customer-browsing pattern
- * catalog-service's /products/search and /categories already established.
+ * safe. /product/{productId} and /{id} are both public, unauthenticated
+ * reads — the former for customer browsing (api-gateway's public-paths,
+ * matching catalog-service's /products/search and /categories precedent),
+ * the latter only ever called service-to-service (e.g. cart-service's
+ * InventoryClient — Stage 6), so it just needs InternalRequestFilter to pass.
  */
 @RestController
 @RequestMapping("/api/inventory/listings")
@@ -71,5 +73,10 @@ public class ListingController {
     @GetMapping("/product/{productId}")
     public List<ListingResponse> byProduct(@PathVariable String productId) {
         return inventoryService.byProduct(productId).stream().map(ListingResponse::from).toList();
+    }
+
+    @GetMapping("/{id}")
+    public ListingResponse getById(@PathVariable UUID id) {
+        return ListingResponse.from(inventoryService.getById(id));
     }
 }

@@ -44,6 +44,7 @@
         <module>merchant-service</module>
         <module>catalog-service</module>
         <module>inventory-service</module>
+        <module>cart-service</module>
     </modules>
 
     <dependencyManagement>
