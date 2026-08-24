@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 5 Build Map (Inventory)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF1F6; --surface: #FFFFFF; --ink: #172233; --muted: #58687F; --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+    --accent: #C6912E; --accent-ink: #241804; --accent-soft: rgba(198,145,46,0.14);
+    --wire-build: #6C87A8; --wire-deep: #B0765A;
+    --wash-build: rgba(62,124,166,0.05); --wash-deep: rgba(181,101,58,0.06);
+    --tag-build: #3E7CA6; --tag-deep: #B5653A;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --wire-build: #6E8FBD; --wire-deep: #C6835F;
+      --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+      --tag-build: #85AFDD; --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper); color: var(--ink); font-family: var(--font-serif); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .titleblock { max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: block; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 46ch; margin-top: 10px; }
+  .stamp { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface); }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root { position: relative; width: 168px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono); }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .branch-toggle .tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600; padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+
+  .legend { max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 5 Build Map — Inventory</h1>
+    <p class="sub">Stage 5: inventory-service — the highest-risk stage in the roadmap. Per-merchant listings, atomic reserve/confirm/release, and a concurrency test proving the oversell guarantee under real parallel load.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 5</span>
+    <span class="k">Date</span><span class="v">2026-08-25</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 5 inventory root node to a Build Log branch and a Deep Dives branch about Stage 5 inventory-service."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Inventory</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <div class="leaf-group build">
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">MerchantListing — the per-merchant price/stock fact</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p>One row per (merchant, product) pair — <code>merchantId</code> correlates by value to the caller's own <code>X-User-Id</code> (same as merchant-service's own <code>ownerUserId</code>), <code>productId</code> to catalog-service's Mongo <code>Product.id</code>. Both cross-database correlations, not foreign keys — the same pattern user-service and merchant-service already established. <code>productName</code>/<code>productCategory</code> are a snapshot taken at creation time so listing reads never need a live call back to catalog-service.</p>
+            <div class="why"><strong>why not a real Merchant.id foreign key</strong>ARCHITECTURE.md §7's dependency table lists catalog-service as inventory-service's <em>only</em> synchronous dependency — merchant-service isn't on that list. Resolving "which Merchant record does this caller own" would mean inventing an unlisted REST call. Treating the caller's own user id as the merchant identity avoids that entirely, and it's exactly the value merchant-service's own <code>Merchant.ownerUserId</code> already equals.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">Reserve / confirm / release — ADR 0002's atomic UPDATE</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <p>No distributed lock service. A single conditional <code>UPDATE ... WHERE available_stock &gt;= :qty</code>, returning rows-affected instead of throwing — 0 means insufficient stock. Postgres's own row lock during the statement is the entire correctness mechanism. <code>reserve</code> decrements available/increments reserved; <code>confirm</code> (payment succeeded) decrements reserved permanently; <code>release</code> (failure/cancel/timeout) puts available back and drops reserved.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">The concurrency test — the whole point of this stage</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <p>20 parallel <code>reserve</code> requests — each its own <code>orderId</code>, quantity 1 — fired at a listing with <code>availableStock=1</code>. Result: exactly one <code>201</code>, nineteen <code>409</code>s, final state <code>availableStock=0</code> / <code>reservedStock=1</code>, exactly one reservation row in Postgres. Repeated against a second, independent listing with the identical result — not a one-off.</p>
+            <div class="why"><strong>why the failed 19 don't leave any trace</strong>The conditional UPDATE either affects one row or zero — a failed attempt never inserts a reservation row at all, so there's nothing to clean up. Correctness comes from never having created the wrong state in the first place, not from detecting and undoing it after the fact.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">Idempotency, and the reaper (ADR 0003)</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>Re-<code>reserve</code>-ing an already-reserved <code>(orderId, listingId)</code> pair returns the existing row — no double-decrement. <code>confirm</code>/<code>release</code> on an order with nothing left <code>PAYMENT_PENDING</code> is a no-op (<code>[]</code>), not an error.</li>
+              <li>A scheduled job (default every 90s, configurable) finds reservations still <code>PAYMENT_PENDING</code> past a 15-minute timeout and releases them — DB-driven, not Redis TTL/keyspace-notify, since Redis expiry events aren't guaranteed delivery. Verified by backdating a reservation's <code>reserved_at</code> directly in Postgres and watching the next scheduled cycle release it and restore stock.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">The project's first Kafka consumer</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>Every prior stage only produced events. <code>ProductEventConsumer</code> listens on <code>product-events</code> (group-id <code>inventory-service</code>, <code>auto-offset-reset: earliest</code>) and, since catalog-service's own event payload is deliberately thin — just a productId — does one REST fetch per product to populate a local <code>KnownProduct</code> cache. Listing creation checks that cache first, only falling back to a live catalog-service call on a miss. <code>earliest</code> meant this also backfilled both products approved back in Stage 4, before this service ever existed.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c6" aria-expanded="false">
+            <span class="tag">06</span>
+            <span class="title">Two real bugs, both timing, both different from Stage 4's</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c6"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>The <code>earliest</code>-offset backfill fires a REST call the instant the service starts, before the load-balanced RestTemplate's Eureka view of catalog-service has populated. Spring Kafka's near-instant default retry exhausted before that cache warmed up — both historical events were silently skipped. Confirmed via <code>rpk group describe</code> showing the consumer already past them; fixed with a 3s/8-attempt backoff, then replayed by resetting the consumer group's offset back to the start of the topic.</li>
+              <li><code>KafkaTemplate.send</code> isn't covered by the JPA transaction. A multi-item reserve where line 1 succeeds and line 2 fails rolls the whole call back at the database level — but a stock-threshold event for line 1 had already been sent to Kafka before the exception fired, so the event survived even though the underlying change didn't. Caught by literally counting the topic's high-watermark before and after the exact rollback scenario. Fixed by deferring the publish to a post-commit callback.</li>
+            </ul>
+          </div></div></div>
+        </article>
+      </div>
+
+      <div class="leaf-group deep">
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">concurrency</span>
+            <span class="title">Why a plain UPDATE beats a distributed lock here</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Twenty requests hit the same row at once — what actually stops two of them from both reading "stock: 1" and both deciding they can proceed?</dt><dd class="a">They never get the chance to read independently in the first place. An <code>UPDATE ... WHERE</code> statement isn't "read, then decide, then write" in application code — it's one atomic statement the database executes under a row lock. The first request's UPDATE takes the lock, checks the predicate against the current row, and commits its change. Every other concurrent request's UPDATE blocks on that same row until the lock releases, and only then evaluates its own <code>WHERE available_stock &gt;= 1</code> — against the now-already-decremented value. Nineteen of them see <code>available_stock = 0</code> and correctly affect zero rows. No request ever acts on stale data, because no request ever gets to act until the database itself has finished the previous one. A Redis distributed lock would be solving a problem the database already solves for free, while adding a genuinely new failure mode (a lock that's never released after a crash, a TTL that doesn't match how long the operation actually takes) for zero additional correctness.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">events</span>
+            <span class="title">The Kafka-inside-a-transaction trap, generalized</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Every earlier stage published Kafka events from inside a @Transactional method with no problem — why did this one bite?</dt><dd class="a">Because every earlier publish happened at the very end of a method that only ever succeeded or threw before making any change — merchant approval, product approval, and so on all published once, right before returning, with nothing left that could fail afterward and roll the whole thing back. inventory-service's <code>reserve()</code> is the first method in the project that does something meaningfully different: it loops over several line items, one database write per item, and can fail partway through, aborting a change that already happened earlier in the same call. The moment a Kafka publish sits <em>in the middle</em> of a transaction that might still roll back — rather than immediately before the method returns successfully — the two systems disagree about whether the enclosing operation actually happened. Kafka has no idea a Postgres transaction even exists; it commits the moment <code>send()</code> is called, regardless of what the database ends up deciding. The general rule this leaves behind: a side effect to a system the database transaction can't reach — a queue, a webhook, an external API call — belongs after the transaction is known to have committed, never in the middle of one that might still be undone.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">consumers</span>
+            <span class="title">Why earliest, not latest — and what it cost</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Spring Kafka defaults new consumer groups to latest — why override that, and was it worth the startup-timing bug it caused?</dt><dd class="a">Because <code>latest</code> would have been silently wrong for this specific case: catalog-service had already published <code>product.created</code> for two real products during Stage 4's own testing, before inventory-service — and this consumer group — existed at all. A consumer that only sees messages from the moment it first connects would permanently never learn about anything that happened before it existed, with no error and no obvious symptom beyond "the cache is just missing a couple of products for no visible reason." <code>earliest</code> is the only choice that makes a brand-new read-model consumer actually complete on its first boot. The cold-start REST-timing bug this exposed was a real bug worth fixing, but it was a consequence of doing the backfill immediately and synchronously inside the listener — not a reason to abandon backfilling in the first place.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d4" aria-expanded="false">
+            <span class="tag">boundaries</span>
+            <span class="title">Why reservation endpoints skip the permission layer entirely</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d4"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Every other write endpoint in this project checks a specific permission — why do reserve/confirm/release just check InternalRequestFilter and nothing else?</dt><dd class="a">Because they're not user actions at all — per ARCHITECTURE.md §8, this is the one place order-service will call inventory-service synchronously, and order-service doesn't exist until Stage 8. A permission check answers "is this specific person allowed to do this," which presumes a person is the caller in the first place; the actual caller here is another backend service acting on behalf of an order that's already been validated elsewhere. <code>InternalRequestFilter</code> already answers the only question that's actually being asked at this layer — "did this request come from inside the trusted system, not directly from the internet" — and that's the correct, complete boundary for an endpoint no human is ever meant to call directly.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'], ['hub-deep', 'd4', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawConnectors); }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
