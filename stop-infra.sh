@@ -45,9 +45,10 @@ if [ -d "$PID_DIR" ] && [ -n "$(ls -A "$PID_DIR" 2>/dev/null)" ]; then
       continue
     fi
 
-    # sanity check: only kill it if it still looks like our mvn/java process,
+    # sanity check: only kill it if it still looks like a process we'd have
+    # started (mvn/java for backend services, node/vite for the frontend),
     # in case the PID got reused by an unrelated process since we recorded it
-    if ! ps -p "$pid" -o command= 2>/dev/null | grep -qE "spring-boot:run|java"; then
+    if ! ps -p "$pid" -o command= 2>/dev/null | grep -qE "spring-boot:run|java|vite|node|npm"; then
       skip "$name  ${DIM}PID $pid no longer looks like our process — leaving it alone${RESET}"
       rm -f "$pidfile"
       continue

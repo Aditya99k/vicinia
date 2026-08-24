@@ -33,7 +33,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # -> VICINIA_JWT
 Then:
 
 ```
-./start-infra.sh   # loads .env, infra containers + build + every service, in dependency order
+./start-infra.sh   # loads .env, infra + every backend service + the frontend, in dependency order
 ./stop-infra.sh    # tears it all back down
 ```
 
@@ -43,11 +43,7 @@ Then:
 
 ### Frontend (validation only)
 
-`frontend/customer-app` is a real React app for clicking through what's built so far (signup, login, profile, addresses) — not the full Stage 18 build. See its own [README](frontend/customer-app/README.md).
-
-```
-cd frontend/customer-app && npm install && npm run dev   # http://localhost:5173
-```
+`frontend/customer-app` is a real React app for clicking through what's built so far — not the full Stage 18 build. `start-infra.sh` brings it up automatically (installing dependencies on first run) at `http://localhost:5173`, and prints a LAN URL too for testing from a phone on the same Wi-Fi. See its own [README](frontend/customer-app/README.md).
 
 ## Status
 

@@ -3,6 +3,8 @@
 # Starts the full Vicinia local dev stack, in dependency order:
 #   1. Docker infra: Postgres, Redis, Redpanda (+ their web UIs)
 #   2. Spring Boot services, in the order each depends on the last
+#   3. frontend/customer-app (Vite, bound to 0.0.0.0 so it's reachable
+#      from a phone on the same Wi-Fi too)
 #
 # Usage: ./start-infra.sh
 # Logs land in ./logs/<service>.log; PIDs are tracked in ./.pids/ so
@@ -38,6 +40,7 @@ SERVICES=(
   "api-gateway:api-gateway:8080"
   "auth-service:auth-service:8081"
   "user-service:user-service:8082"
+  "merchant-service:merchant-service:8083"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────
@@ -181,7 +184,40 @@ for entry in "${SERVICES[@]}"; do
   wait_for_http "$name" "$health_url" 120 || exit 1
 done
 
-# ── 6. Eureka registry snapshot ─────────────────────────────────────
+# ── 6. Frontend (customer-app) ──────────────────────────────────────
+section "Frontend (customer-app)"
+FRONTEND_DIR="$SCRIPT_DIR/frontend/customer-app"
+FRONTEND_URL="http://localhost:5173"
+
+if curl -fsS -o /dev/null "$FRONTEND_URL" 2>/dev/null; then
+  skip "customer-app" "already running on :5173"
+else
+  if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+    printf "  ${DIM}installing frontend dependencies (first run)…${RESET}\n"
+    if ! ( cd "$FRONTEND_DIR" && npm install ) > "$LOG_DIR/customer-app-install.log" 2>&1; then
+      fail "npm install failed — see logs/customer-app-install.log"
+      exit 1
+    fi
+  fi
+
+  (
+    cd "$FRONTEND_DIR" || exit 1
+    # Runs the local vite binary directly rather than `npm run dev` — npm
+    # wraps it in its own process that doesn't reliably forward SIGTERM to
+    # the actual vite/node child, which left an orphaned server behind the
+    # first time this was tried. Tracking vite's own PID means stop-infra.sh
+    # kills the real process, not a wrapper around it.
+    # --host binds 0.0.0.0, not just localhost, so it's reachable from a
+    # phone on the same Wi-Fi too — see src/api/client.js for how the app
+    # then finds the gateway regardless of which host loaded the page.
+    nohup ./node_modules/.bin/vite --host > "$LOG_DIR/customer-app.log" 2>&1 &
+    echo $! > "$PID_DIR/customer-app.pid"
+  )
+
+  wait_for_http "customer-app" "$FRONTEND_URL" 60 || exit 1
+fi
+
+# ── 7. Eureka registry snapshot ─────────────────────────────────────
 # A service's /actuator/health can report UP slightly before its Eureka
 # registration has propagated, so retry briefly rather than checking once.
 section "Eureka registry"
@@ -198,7 +234,7 @@ else
   printf "  ${DIM}(nothing registered yet — give it a few seconds)${RESET}\n"
 fi
 
-# ── 7. Summary ───────────────────────────────────────────────────────
+# ── 8. Summary ───────────────────────────────────────────────────────
 printf "\n${BOLD}${GREEN}"
 cat <<'EOF'
   ╔══════════════════════════════════════════════════════╗
@@ -207,11 +243,15 @@ cat <<'EOF'
 EOF
 printf "${RESET}\n"
 
-printf "  ${BOLD}%-18s${RESET} %s\n" "discovery-server" "http://localhost:8761"
-printf "  ${BOLD}%-18s${RESET} %s\n" "config-server" "http://localhost:8888"
-printf "  ${BOLD}%-18s${RESET} %s\n" "api-gateway" "http://localhost:8080"
-printf "  ${BOLD}%-18s${RESET} %s\n" "auth-service" "http://localhost:8081"
-printf "  ${BOLD}%-18s${RESET} %s\n" "user-service" "http://localhost:8082"
+for entry in "${SERVICES[@]}"; do
+  IFS=':' read -r name dir port <<< "$entry"
+  printf "  ${BOLD}%-18s${RESET} %s\n" "$name" "http://localhost:${port}"
+done
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)
+printf "  ${BOLD}%-18s${RESET} %s\n" "customer-app" "http://localhost:5173"
+if [ -n "$LAN_IP" ]; then
+  printf "  ${DIM}%-18s${RESET} ${DIM}%s${RESET}\n" "" "http://${LAN_IP}:5173  (same Wi-Fi, e.g. from a phone)"
+fi
 echo
 printf "  ${BOLD}%-18s${RESET} %s\n" "postgres" "localhost:5432  (user/pass: ${POSTGRES_USER}/${POSTGRES_PASSWORD})"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis" "localhost:6379"
