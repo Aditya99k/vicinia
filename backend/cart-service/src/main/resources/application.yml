@@ -11,6 +11,23 @@ spring:
       host: localhost
       port: 6379
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: cart-service
+      # Deliberately the default (latest), not earliest like inventory-service/
+      # payment-service's read-model backfills — there's no useful action to
+      # take on an order.confirmed from before this consumer existed. A cart's
+      # current contents reflect today, not what was in it when some old order
+      # was placed; "catching up" on stale confirmations could even clear a
+      # cart that's since been filled with unrelated new items.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.cartservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.cartservice.messaging.OrderEventEnvelope
+
 management:
   endpoints:
     web:

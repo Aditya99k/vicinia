@@ -1,4 +1,4 @@
-package com.vicinia.cartservice;
+package com.vicinia.paymentservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,8 +6,8 @@ import org.springframework.kafka.annotation.EnableKafka;
 
 @SpringBootApplication
 @EnableKafka
-public class CartServiceApplication {
+public class PaymentServiceApplication {
     public static void main(String[] args) {
-        SpringApplication.run(CartServiceApplication.class, args);
+        SpringApplication.run(PaymentServiceApplication.class, args);
     }
 }

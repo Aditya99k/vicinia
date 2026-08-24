@@ -11,10 +11,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>cart-service</artifactId>
+    <artifactId>order-service</artifactId>
     <packaging>jar</packaging>
-    <name>cart-service</name>
-    <description>Active cart, Redis-only (ARCHITECTURE.md §6/§7/§12, ADR 0001 — single merchant per cart)</description>
+    <name>order-service</name>
+    <description>Order aggregate + canonical status, checkout orchestration across cart/inventory/coupon/payment (ARCHITECTURE.md §4.5/§6/§7/§8, ADR 0004)</description>
 
     <dependencies>
         <dependency>
@@ -27,11 +27,8 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
-            <!-- The only storage this service has — no Postgres, no Mongo.
-                 ARCHITECTURE.md §6: "Ephemeral, TTL-based, no durability
-                 beyond a session." -->
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -42,6 +39,10 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
@@ -50,20 +51,16 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
         <dependency>
-            <!-- InventoryClient -> inventory-service, for the live
-                 price/availability check on every cart read (same
-                 service-to-service pattern as inventory-service's own
-                 CatalogClient in Stage 5). -->
+            <!-- CartClient/InventoryClient/CouponClient/PaymentClient — order-service
+                 is the first service to call out to FOUR others synchronously. -->
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+
         <dependency>
-            <!-- First Kafka dependency this service has — OrderConfirmedConsumer
-                 clears the cart on order.confirmed (Stage 8), closing a gap
-                 Stage 6 explicitly deferred since order-service (the only
-                 possible producer) didn't exist yet. -->
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 </project>
