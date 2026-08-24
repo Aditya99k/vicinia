@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 5 Build Map (Orders)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF1F6; --surface: #FFFFFF; --ink: #172233; --muted: #58687F; --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+    --accent: #C6912E; --accent-ink: #241804; --accent-soft: rgba(198,145,46,0.14);
+    --wire-build: #6C87A8; --wire-deep: #B0765A;
+    --wash-build: rgba(62,124,166,0.05); --wash-deep: rgba(181,101,58,0.06);
+    --tag-build: #3E7CA6; --tag-deep: #B5653A;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --wire-build: #6E8FBD; --wire-deep: #C6835F;
+      --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+      --tag-build: #85AFDD; --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper); color: var(--ink); font-family: var(--font-serif); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .titleblock { max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: block; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 50ch; margin-top: 10px; }
+  .stamp { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface); }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root { position: relative; width: 168px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono); }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .branch-toggle .tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600; padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+
+  .legend { max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 5 Build Map — Orders</h1>
+    <p class="sub">Stage 8: order-service, the checkout orchestrator — the biggest stage yet. A roadmap sequencing gap resolved with the user before writing code, a pulled-forward payment slice, both required rollback paths proven with real races instead of stubs, and a cart-clearing bug found and closed mid-stage.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 8</span>
+    <span class="k">Date</span><span class="v">2026-08-25</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 5 order root node to a Build Log branch and a Deep Dives branch about Stage 8 order-service."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Orders</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <div class="leaf-group build">
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">A roadmap gap, resolved before writing code</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p>Stage 8's own "Done when" requires verifying checkout with wallet payment — but wallet debit/credit is <code>payment-service</code>'s owned data, and that's Stage 9, not built yet. Every earlier stage's own dependencies already existed by the time that stage started; this was the first genuine sequencing conflict in the plan itself. Flagged directly and resolved with the user before any code: pull forward a minimal wallet-only payment-service now, real enough for genuine end-to-end verification, with Razorpay and the fuller ledger staying real Stage 9 scope.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">The checkout chain — four services, one orchestrator</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <p>cart (get + live-availability check) → coupon (optional, apply) → inventory (reserve → confirm or release) → payment (pay or fail). Full <code>OrderStatus</code> lifecycle from ARCHITECTURE.md §4.5, guarded by an <code>OrderStatusTransition</code> EnumMap — same pattern as Stage 3's <code>MerchantStatusTransition</code>, built for the complete graph through <code>DELIVERED</code>/<code>REFUNDED</code> even though this stage only drives <code>CREATED</code> through <code>CONFIRMED</code>/<code>PAYMENT_FAILED</code>/<code>CANCELLED</code> — <code>MERCHANT_ACCEPTED</code> onward has no real producer yet.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">Both rollback paths, proven with real races</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li><strong>Reservation fails:</strong> two customers, one unit of stock, both carts independently showing <code>available:true</code> — fired both checkouts concurrently. One <code>CONFIRMED</code>, one genuinely hit inventory's 409 and correctly landed on <code>CANCELLED</code>, no oversell, loser never charged. A naive "add 999 to cart" doesn't reach this path at all — cart-service's own live check catches that earlier.</li>
+              <li><strong>Payment fails:</strong> a $0-wallet customer reserved successfully, hit 402 on pay — order-service released the reservation and landed on <code>PAYMENT_FAILED</code>, stock confirmed restored.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">Coupons and cancel-and-refund, exercised together</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <p>A coupon-discounted order (20% capped, flat-10, both tested through the real checkout) charges the wallet the discounted total, not the subtotal. Cancelling that same order later refunds the exact amount actually charged — via <code>order.cancelled</code> published by order-service and consumed by payment-service (event-driven, per §8's REST-vs-Kafka rule — order-service doesn't need the refund's result to decide anything next). Re-cancelling, and cancelling a terminal <code>PAYMENT_FAILED</code> order, both correctly rejected as illegal transitions.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">A real bug found mid-stage: the cart never cleared</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>The very first happy-path test showed the customer's cart still full of items they'd just paid for. ARCHITECTURE.md §7 already names the fix — cart-service consuming <code>order.confirmed</code> — and Stage 6 explicitly deferred it since order-service didn't exist yet. It does now: <code>order.created</code>/<code>order.confirmed</code> payloads widened to carry <code>userId</code> (an async consumer needs enough to act, not a callback), and cart-service got its first Kafka dependency.</p>
+            <div class="why"><strong>why latest, not earliest, this time</strong>Every prior read-model consumer (inventory's product cache, payment's wallet provisioning) used <code>earliest</code> to backfill real history. Here that would be wrong: a cart's contents today aren't what was in it when some old order was placed, and "catching up" on a stale confirmation could clear a cart full of unrelated newer items. Deliberately the Kafka default.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c6" aria-expanded="false">
+            <span class="tag">06</span>
+            <span class="title">The minimal payment-service slice</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c6"><div class="detail-inner"><div class="detail">
+            <p><code>Wallet</code> + <code>WalletTransaction</code>, auto-provisioned on <code>user.registered</code> (mirroring user-service's Stage 2 pattern), atomic debit via ADR 0002's pattern (a fourth instance of "same family as inventory" this project has now built), idempotent on <code>(orderId, type)</code> with the exact <code>ON CONFLICT DO NOTHING</code> fix already proven in Stage 7's coupon-service — caught and fixed in <code>refundIfPaid</code> before it ever ran, mirroring the same race shape.</p>
+          </div></div></div>
+        </article>
+      </div>
+
+      <div class="leaf-group deep">
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">transactions</span>
+            <span class="title">Why placeOrder has no @Transactional at all</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">A method this important, touching the database this many times — how is it correct with zero explicit transaction boundaries?</dt><dd class="a">Because wrapping the whole flow in one transaction would be wrong, not just unnecessary — it would repeat Stage 5's Kafka-in-a-transaction bug in a new shape: a REST call to inventory-service that succeeds and mutates <em>its</em> database has no way to be undone if order-service's own transaction later rolls back for an unrelated reason, so the two services' states could permanently disagree. Each meaningful step here is exactly one <code>orderRepository.save(...)</code> call, and Spring Data's <code>JpaRepository</code> already wraps every individual method in its own transaction by default — so each step commits durably and immediately, before the next external call is ever made, without needing a single line of transaction-management code in this service at all. The correctness comes from never holding a commit open across a network call, not from careful annotation placement.</dd></div>
+              <div><dt class="q">Wouldn't @Transactional on the small helper methods at least be harmless, even if unnecessary?</dt><dd class="a">It would actually be worse than harmless — it would silently do nothing. Spring's <code>@Transactional</code> only works through a proxy Spring wraps around the bean; calling <code>this.createOrder(...)</code> from inside another method on the very same object skips that proxy entirely, a well-known Spring gotcha. An annotation that looks like a safety net but has zero effect is more dangerous than no annotation at all, because it invites false confidence. Relying on the repository's own built-in transactionality sidesteps the whole trap by never needing the proxy in the first place.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">testing</span>
+            <span class="title">Why "add 999 to cart" doesn't test what it looks like it tests</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">The obvious way to force a reservation failure is to order way more than the stock — why did that turn out to be the wrong test?</dt><dd class="a">Because it never actually reaches inventory-service's reservation logic at all. Cart-service's own live-availability check (Stage 6) already flags any line where the requested quantity exceeds current stock, and order-service checks that flag before it ever calls reserve — so the request is rejected at the cart-validation step with a 409, several layers before the code path BUILD_TRACKER's "Done when" is actually asking about gets exercised. The only way to genuinely trigger inventory's own atomic-UPDATE-returns-zero-rows path is a real race: two requests that both pass the cart check honestly (because at the moment either checks, the stock genuinely was still sufficient), where only one can win the database-level decrement. Building the test scenario correctly required understanding the full call chain, not just picking an input that sounds like it should fail.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">events</span>
+            <span class="title">Why cancel's refund is async but its release isn't</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Cancel calls inventory-service directly but only publishes an event for payment-service — why the inconsistency?</dt><dd class="a">It isn't inconsistent, it's each dependency getting exactly the mechanism §7's own table specifies. inventory-service was never listed as consuming order-events at all — the only way to release its reservation is the direct REST call it always exposed. payment-service, by contrast, is explicitly named as consuming <code>order.cancelled</code> to trigger a refund. §8's own rule for choosing REST versus Kafka is whether the caller needs the result to decide what happens next in the same request — and cancel's own outcome (the order becoming CANCELLED) never depends on whether the refund succeeds, since crediting money back essentially can't fail in a way order-service would need to react to. Two different dependencies, two different real requirements, two different correct mechanisms.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d4" aria-expanded="false">
+            <span class="tag">process</span>
+            <span class="title">Why flag the sequencing gap instead of just deciding</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d4"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Every earlier stage made plenty of judgment calls independently — MongoDB vs. Atlas, the gateway public-paths fix, the ON CONFLICT rewrite. Why did this one need to be a question instead?</dt><dd class="a">Scale of consequence. Those earlier calls were local and reversible — a config choice, a bug fix, an implementation detail that doesn't change what "Stage 4 is done" or "Stage 7 is done" means to someone tracking progress against the roadmap. Pulling Stage 9 work into Stage 8 changes the shape of two stages at once and reshapes what "done" means for both, in a way a later course-correction can't cleanly undo — Stage 9's remaining checklist now reads differently because of a decision made here. That combination — genuinely reshapes a shared plan, isn't obviously reversible, and the reasonable alternatives (stub the payment step, reorder the stages) are all real options a person might prefer differently — is exactly the situation worth one direct question rather than a silent judgment call.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'], ['hub-deep', 'd4', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawConnectors); }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
