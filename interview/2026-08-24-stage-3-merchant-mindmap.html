@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 4 Build Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF1F6; --surface: #FFFFFF; --ink: #172233; --muted: #58687F; --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+    --accent: #C6912E; --accent-ink: #241804; --accent-soft: rgba(198,145,46,0.14);
+    --wire-build: #6C87A8; --wire-deep: #B0765A;
+    --wash-build: rgba(62,124,166,0.05); --wash-deep: rgba(181,101,58,0.06);
+    --tag-build: #3E7CA6; --tag-deep: #B5653A;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --wire-build: #6E8FBD; --wire-deep: #C6835F;
+      --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+      --tag-build: #85AFDD; --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper); color: var(--ink); font-family: var(--font-serif); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .titleblock { max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: block; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 46ch; margin-top: 10px; }
+  .stamp { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface); }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root { position: relative; width: 168px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono); }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .branch-toggle .tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600; padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+
+  .legend { max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 4 Build Map</h1>
+    <p class="sub">Stage 3: merchant-service and its onboarding state machine — plus getting the frontend into start-infra.sh, which surfaced a real npm-vs-vite process bug.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 3</span>
+    <span class="k">Date</span><span class="v">2026-08-24</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 4 root node to a Build Log branch and a Deep Dives branch about Stage 3 merchant-service and the frontend orchestration fix."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Day 4</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <div class="leaf-group build">
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">merchant-service — the onboarding state machine</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p>Full 8-state machine (<code>PENDING_REVIEW → APPROVED → ONBOARDING → LIVE</code>, plus <code>REJECTED</code>/<code>SUSPENDED</code>/<code>TEMP_CLOSED</code>/<code>PERMANENTLY_CLOSED</code>) with one dedicated class, <code>MerchantStatusTransition</code>, as the single source of truth for what's legal — a static <code>EnumMap&lt;Status, Set&lt;Status&gt;&gt;</code> that every transition in the service goes through via <code>merchant.transitionTo(target)</code>.</p>
+            <div class="why"><strong>why centralize this instead of checking inline per-endpoint</strong>Seven different endpoints (go-live, close, reopen, approve, reject, suspend, reinstate) each change status. Checking "is this move legal?" inline in each one means seven places that could each get the rule slightly wrong or drift out of sync. One shared guard means the rule is defined exactly once, and every endpoint fails identically when it's violated.</div>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">Apply, document metadata, hours, radius</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li><code>POST /api/merchants/apply</code> — one merchant per <code>ownerUserId</code> (unique constraint), a list of document metadata (type + reference URL — no real file upload yet, that's a future Cloudinary integration), store address, defaults to a 5km delivery radius.</li>
+              <li><code>PUT /me/hours</code>, <code>PUT /me</code> — business hours and store profile, editable by the owning merchant.</li>
+              <li><code>go-live</code> is gated on hours being set — the full "at least one catalog listing" gate from the architecture doc can't be enforced yet since catalog-service doesn't exist until Stage 4. Documented as a deliberate, temporary simplification.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">Admin endpoints, permission-gated</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <p>Approve, reject, suspend, reinstate, and the pending-review list all require the <code>MERCHANT_APPROVE</code> permission — the same one seeded onto <code>ADMIN</code> back in Stage 2's <code>RoleSeeder</code>. Checked via a plain <code>X-User-Permissions</code> header read (<code>PermissionUtil.require(...)</code>), not a Spring Security framework — matches the hand-rolled style already used for JWT and internal-secret checks elsewhere.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">merchant.approved / merchant.suspended on Kafka</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <p>Published to <code>merchant-events</code>, partitioned by <code>merchantId</code>, via <code>common</code>'s <code>EventEnvelope</code> — same pattern as auth-service's <code>user.registered</code> in Stage 2. No consumers exist yet (catalog-service, notification-service) — expected at this point in the build, not a gap.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">start-infra.sh now brings up the frontend too</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>Installs dependencies on first run, starts <code>customer-app</code>, waits for it to actually respond, and prints both the localhost and LAN URLs (LAN IP detected live via <code>ipconfig</code>) in the summary. Fixing <code>stop-infra.sh</code> to actually tear it back down surfaced two real bugs in a row.</p>
+            <div class="why"><strong>bug 1 — the process sanity-check never matched it</strong><code>stop-infra.sh</code>'s "does this PID still look like our process" regex only checked for <code>spring-boot:run|java</code>. The frontend process didn't match either, so it was silently skipped — left running every time, with no error.</div>
+            <p>Fixed the regex, then found <strong>bug 2</strong>: even matching, killing the tracked PID (<code>npm run dev -- --host</code>) left a second, orphaned process still holding port 5173 — npm doesn't reliably forward <code>SIGTERM</code> to the vite/node child it spawns. Fixed by launching <code>./node_modules/.bin/vite --host</code> directly, so the tracked PID <em>is</em> the real server, no wrapper process in between. See Deep Dives for the general version of this lesson.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c6" aria-expanded="false">
+            <span class="tag">06</span>
+            <span class="title">Full verification pass</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c6"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>Apply → 201 PENDING_REVIEW; duplicate apply → 409.</li>
+              <li>Go-live pre-approval → blocked twice over: the hours gate, and independently, the raw transition guard (PENDING_REVIEW → LIVE isn't in the allowed set at all).</li>
+              <li>Admin approve → the double PENDING_REVIEW → APPROVED → ONBOARDING transition in one call, with <code>merchant.approved</code> actually consumed off Redpanda to confirm key and payload — not just assumed sent.</li>
+              <li>Non-admin hitting an admin endpoint → 403 with the specific missing permission named.</li>
+              <li>Go-live once approved+hours-set → LIVE, shows up in public <code>/nearby</code>; suspend → gone from <code>/nearby</code>, <code>merchant.suspended</code> confirmed on Kafka, double-suspend → 409; reinstate → LIVE again; reject → REJECTED, then reject-into-approve → 409 confirming it's terminal.</li>
+              <li>start-infra.sh / stop-infra.sh: fresh start, re-run idempotency (frontend correctly no-ops on a second start), and a clean stop verified with nothing orphaned — processes, containers, or PID files.</li>
+            </ul>
+          </div></div></div>
+        </article>
+      </div>
+
+      <div class="leaf-group deep">
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">state machine</span>
+            <span class="title">Why approve does two transitions in one call</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">The architecture doc says approve fires an event, then transitions to ONBOARDING — why not model that as two separate admin-triggered steps?</dt><dd class="a">Because nothing else needs to happen in between. The event is what other services (eventually) react to; the ONBOARDING transition is a bookkeeping detail entirely internal to merchant-service itself. Splitting it into two admin-callable steps would just mean admins have to remember to always call the second one, for a distinction that carries no information to anyone outside the service. Publish the event where the state semantically becomes APPROVED, then move on immediately — one admin action, one API call, two recorded transitions.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">authz</span>
+            <span class="title">Why a header check instead of Spring Security</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Isn't checking a raw header string for a permission name fragile compared to a real authorization framework?</dt><dd class="a">It would be, if this service were the thing establishing trust. It isn't — api-gateway already did the actual authentication (verified the JWT, checked the blacklist) before this header ever arrives, and <code>InternalRequestFilter</code> already guarantees the request came through the gateway and not directly. By the time <code>PermissionUtil.require(...)</code> runs, the only open question left is "does this already-authenticated, already-gateway-verified caller have this one specific permission" — a single string-membership check, which is genuinely all that's left to decide. Pulling in a full authorization framework here would be solving a problem that api-gateway already solved.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">process mgmt</span>
+            <span class="title">The npm-vs-vite bug, generalized</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why did tracking npm's PID leave an orphaned process at all — isn't a child process killed when its parent dies?</dt><dd class="a">Not automatically, and not reliably through npm specifically. A process only dies when it receives and acts on a signal (or its parent's death happens to trigger something like a SIGHUP it doesn't ignore) — npm as a wrapper has a known history of not forwarding SIGTERM/SIGINT to the child it spawns for a script, so the child can simply keep running, now parentless, still holding whatever port or resource it had. This is the same general class of bug as the earlier auth-token-caching issue this project hit: something upstream changed or died, but a downstream thing that already has what it needs just keeps going, oblivious.</dd></div>
+              <div><dt class="q">What's the general rule for avoiding this class of bug?</dt><dd class="a">When a script backgrounds a process specifically so it can be tracked and killed later, track the <em>actual</em> long-running process, not a wrapper/launcher around it — invoke the real binary directly wherever possible (here: <code>node_modules/.bin/vite</code> instead of <code>npm run dev</code>). If a wrapper is unavoidable, verify empirically that killing the tracked PID actually kills the whole subtree, don't assume it — which is exactly how this bug was caught: comparing <code>lsof -ti:5173</code> against the PID file directly, instead of trusting the stop script's own "success" output.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d4" aria-expanded="false">
+            <span class="tag">boundaries</span>
+            <span class="title">Why /nearby doesn't do geo-radius math</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d4"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Merchant already stores latitude/longitude/deliveryRadiusKm — why doesn't /nearby actually filter by distance yet?</dt><dd class="a">Because that's a deliberate, already-decided service boundary, not a missing feature: ARCHITECTURE.md §7 puts geo-radius search in <em>inventory-service</em> (Redis <code>GEORADIUS</code> queries against merchant listings), not merchant-service, since "which stores are near me" and "which of those stores have this product in stock nearby" are really one combined query once inventory-service exists. Building distance math here now would mean building it twice, or building the wrong half of it — merchant-service's job is just merchant identity and status, filtering to LIVE is the correct scope for it alone.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'], ['hub-deep', 'd4', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawConnectors); }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
