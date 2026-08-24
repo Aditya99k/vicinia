@@ -106,11 +106,13 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
   Two real bugs found and fixed during verification: (1) `docker-compose.infra.yml` mapped Redpanda's pandaproxy/schema-registry to host ports 8081/8082, colliding with auth-service/user-service — remapped to 18081/18082. (2) Redpanda advertised `redpanda:9092` (only resolvable inside the Docker network), but services run on the host at this stage — changed to advertise `localhost:9092` with a comment noting this flips back to the container hostname once app services are containerized in Stage 19. Also caught a Spring bean-name collision: a custom `GatewayProperties` class collided with Spring Cloud Gateway's own internal bean of the same name — renamed to `PublicPathsProperties`.
 
 ### Stage 3 — Merchant
-- [ ] `merchant-service`: apply, document metadata, store profile, hours, radius
-- [ ] Onboarding state machine: `PENDING_REVIEW → APPROVED/REJECTED → ONBOARDING → LIVE` — `SUSPENDED`/`TEMP_CLOSED`/`PERMANENTLY_CLOSED`
-- [ ] Admin approve/reject endpoints
-- [ ] Kafka: `merchant.approved`, `merchant.suspended`
-- **Done when:** a merchant can apply, an admin can approve, illegal transitions are rejected, event fires on approval.
+- [x] `merchant-service`: apply, document metadata, store profile, hours, radius
+- [x] Onboarding state machine: `PENDING_REVIEW → APPROVED/REJECTED → ONBOARDING → LIVE` — `SUSPENDED`/`TEMP_CLOSED`/`PERMANENTLY_CLOSED`
+- [x] Admin approve/reject endpoints
+- [x] Kafka: `merchant.approved`, `merchant.suspended`
+- **Done when:** a merchant can apply, an admin can approve, illegal transitions are rejected, event fires on approval. ✅ Verified end-to-end through the gateway: apply → PENDING_REVIEW; duplicate apply → 409; go-live before approval → rejected (both the "hours not set" gate and, separately, the raw state-machine transition guard, confirmed independently); admin approve → APPROVED → ONBOARDING in one call, `merchant.approved` published to `merchant-events` with the correct key/payload, confirmed by actually consuming it off Redpanda; a non-admin (MERCHANT role, no `MERCHANT_APPROVE` permission) hitting an admin endpoint → 403; go-live after hours set → LIVE, appears in public `GET /api/merchants/nearby`; admin suspend → `merchant.suspended` published, no longer in `/nearby`; suspend-while-already-suspended → 409; reinstate → LIVE; reject → REJECTED, then reject-into-approve → 409 confirming REJECTED is terminal.
+
+  One known gap surfaced during testing, not a Stage 3 blocker: there's no admin-account bootstrap flow yet — the ADMIN role had to be granted directly via SQL for testing. Worth a real fix (a seed admin, or an invite-only admin-creation endpoint) before any real deployment, but out of scope for the merchant-service work itself.
 
 ### Stage 4 — Catalog
 - [ ] `catalog-service` (MongoDB/Atlas): global product schema, categories

@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 2 (auth & user) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 3 (merchant) — see `docs/BUILD_TRACKER.md` for current progress.
