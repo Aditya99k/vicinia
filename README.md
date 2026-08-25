@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 16 (observability) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 17 (testing hardening) complete — unit, Testcontainers, Kafka, and e2e tests all passing in CI (`.github/workflows/ci.yml`). See `docs/BUILD_TRACKER.md` for current progress.

@@ -338,11 +338,24 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
   **Verified live, not just wired**: fired a request with a hand-set `X-Correlation-Id` through a real checkout (signup → wallet top-up → cart → order) and found the identical ID in **8** services' logs, not just the required 4 — including two Kafka-consumer hops (merchant-service's `OrderConfirmedConsumer`, notification-service's listeners), proving both the HTTP-header and Kafka-header propagation paths work, not just one. All 16 Prometheus scrape targets confirmed `up`. All 5 Grafana dashboards confirmed loaded via the API and queried directly against Prometheus with each panel's exact PromQL, all returning real, non-empty data: 4 funnel stages with real counts, oversell canary reading a genuine `0`, 72 real Kafka-lag series, a 100% WALLET success rate, and a genuine `0` stale-order count. Confirmed the new correlation-ID filter doesn't interfere with the existing gateway-bypass 403 rejection.
 
 ### Stage 17 — Testing Hardening Pass
-- [ ] Unit tests: state-machine transitions (order, merchant onboarding), reservation math
-- [ ] Integration tests (Testcontainers): each service against its real DB
-- [ ] Kafka tests (Testcontainers): producer shape, idempotent consumer, DLQ path
-- [ ] One full e2e test: checkout → confirm → merchant accept → delivery → deliver → settlement
-- **Done when:** the e2e test passes in CI, not just locally.
+- [x] Unit tests: state-machine transitions (order, merchant onboarding), reservation math
+- [x] Integration tests (Testcontainers): each service against its real DB
+- [x] Kafka tests (Testcontainers): producer shape, idempotent consumer, DLQ path
+- [x] One full e2e test: checkout → confirm → merchant accept → delivery → deliver → settlement
+- **Done when:** the e2e test passes in CI, not just locally. ✅ `.github/workflows/ci.yml`, two jobs (`test`: unit + Testcontainers integration across the whole reactor; `e2e`: `start-infra.sh` + the new `e2e-tests` module against the real running stack), both green on GitHub Actions across two consecutive runs.
+
+  4 unit test classes (order/merchant/delivery/settlement status-machine transitions, full-matrix `@ParameterizedTest`), 5 Testcontainers repository integration tests (inventory oversell concurrency, wallet idempotency concurrency, order derived queries, category + review uniqueness), 1 Kafka integration test (producer shape, idempotent consumer via redelivery, DLQ path), 1 e2e test (`backend/e2e-tests`, plain `java.net.http.HttpClient` + JDBC, no Spring/Testcontainers) driving the real checkout → confirm → merchant accept → delivery → deliver → settlement flow over HTTP against a live stack.
+
+  **A real production bug found while writing these tests**: catalog-service never set `spring.data.mongodb.auto-index-creation`, so `Category`'s unique index on name/slug had never actually been enforced since Stage 4 — the same gap review-service had in Stage 13, explicitly noted-but-left-alone at the time. Fixed.
+
+  **Local Testcontainers execution was blocked the whole time** by a genuine Docker Desktop 4.87.0 / docker-java version incompatibility on this developer machine (confirmed unrelated to Docker's health after a clean restart, and unresolved across 3 different Testcontainers versions) — every Testcontainers-dependent test was written and compile-verified locally (`mvn test-compile`) but actually *executed*, for the first time ever, only in CI. That first real run surfaced 5 genuine bugs no amount of local `test-compile` could have caught:
+  - Inventory's oversell concurrency test: a bare custom `@Modifying @Query` method invoked from worker threads isn't reliably auto-wrapped by Spring Data's repository proxy (spring-data-jpa#1420/#3237/#3733) — fixed with an explicit `TransactionTemplate` per worker, mirroring `InventoryService.reserve()`'s real `@Transactional` boundary.
+  - The identical bug in wallet's idempotency concurrency test — same fix.
+  - The Kafka test's redelivery case: `OrderService.confirmFromPaymentEvent` calls out to inventory-service over real HTTP, which nothing in that test starts — every attempt threw, retried 4 times via `@RetryableTopic`, and landed on the DLT, which also broke the DLQ test's own record count. Fixed with `@MockBean InventoryClient`.
+  - The Kafka test's 3 methods also weren't isolated from each other (one shared consumer group) — the DLQ test's ~14s retry backoff could starve the redelivery test depending on JUnit's method execution order. Fixed with explicit `@Order`.
+  - `ReviewRepositoryIntegrationTest`'s 4 methods all hardcoded `"user-1"`/`"product-1"` — `@DataMongoTest` gets no transactional rollback between methods the way `@DataJpaTest`'s Postgres does, so whichever method ran after another had already inserted that pair hit a real `DuplicateKeyException` on its own unrelated first save. Fixed with UUID-unique data per test.
+
+  Also found and fixed two CI-environment-only gaps unrelated to application code: the pinned Testcontainers version's `KafkaContainer` didn't recognize the native `apache/kafka` image (switched to `confluentinc/cp-kafka`, what that version actually supports), and the Testcontainers job's `@SpringBootTest`-based Kafka test needed `VICINIA_INTERNAL_SECRET`/`VICINIA_JWT_SECRET` supplied directly (normally sourced from config-server, which that job never starts).
 
 ### Stage 18 — Frontend
 - [ ] Customer app: browse, cart, checkout, order tracking, profile
