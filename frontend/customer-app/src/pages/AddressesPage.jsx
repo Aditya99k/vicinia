@@ -4,11 +4,13 @@ import AddressFormModal from '../components/AddressFormModal';
 import { PlusIcon } from '../components/Icons';
 import { EmptyPinIllustration } from '../components/Illustrations';
 import { createAddress, deleteAddress, listAddresses, updateAddress } from '../api/user';
+import { useActionDialog } from '../hooks/useActionDialog';
 
 export default function AddressesPage() {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { confirm, dialog } = useActionDialog();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -56,13 +58,14 @@ export default function AddressesPage() {
   }
 
   async function handleDelete(address) {
-    if (!window.confirm(`Delete "${address.label}"?`)) return;
+    if (!(await confirm(`Delete "${address.label}"?`, { title: 'Delete address', danger: true, confirmLabel: 'Delete' }))) return;
     await deleteAddress(address.id);
     load();
   }
 
   return (
     <div>
+      {dialog}
       <div className="addresses-header">
         <div>
           <h1>Your addresses</h1>

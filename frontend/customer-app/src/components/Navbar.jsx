@@ -5,6 +5,7 @@ import { useTheme } from '../hooks/useTheme';
 import { homePathForRole, primaryRole } from '../utils/roles';
 import { CartIcon, MoonIcon, SunIcon } from './Icons';
 import SearchBox from './SearchBox';
+import NotificationsBell from './NotificationsBell';
 
 const SECTION_LINKS = {
   CUSTOMER: [
@@ -78,6 +79,7 @@ export default function Navbar() {
               {itemCount > 0 && <span className="cart-count">{itemCount}</span>}
             </button>
           )}
+          <NotificationsBell />
           <button className="icon-btn" onClick={toggle} aria-label="Toggle color theme">
             {theme === 'dark' ? <SunIcon style={{ width: 18, height: 18 }} /> : <MoonIcon style={{ width: 18, height: 18 }} />}
           </button>

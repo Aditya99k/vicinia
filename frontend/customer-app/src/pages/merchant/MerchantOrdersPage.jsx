@@ -3,12 +3,14 @@ import { acceptOrder, pendingOrders, readyOrder, rejectOrder } from '../../api/m
 import StatusBadge from '../../components/StatusBadge';
 import { EmptyBoxIllustration } from '../../components/Illustrations';
 import { formatDateTime } from '../../utils/format';
+import { useActionDialog } from '../../hooks/useActionDialog';
 
 export default function MerchantOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const { promptText, dialog } = useActionDialog();
 
   function load() {
     setLoading(true);
@@ -31,7 +33,7 @@ export default function MerchantOrdersPage() {
   }
 
   async function handleReject(orderId) {
-    const reason = window.prompt('Reason for rejecting this order?');
+    const reason = await promptText('Reason for rejecting this order?', { title: 'Reject order', placeholder: 'e.g. Out of stock on one of the items' });
     if (reason === null) return;
     setBusyId(orderId);
     setError('');
@@ -47,6 +49,7 @@ export default function MerchantOrdersPage() {
 
   return (
     <div>
+      {dialog}
       <h1 style={{ fontSize: 22, marginBottom: 4 }}>Order queue</h1>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18 }}>Accept incoming orders and mark them ready for pickup.</p>
 

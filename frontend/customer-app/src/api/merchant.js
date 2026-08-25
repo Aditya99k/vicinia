@@ -56,6 +56,10 @@ export function adminPending() {
   return apiClient.get('/api/merchants/admin/pending').then((r) => r.data);
 }
 
+export function adminAll() {
+  return apiClient.get('/api/merchants/admin/all').then((r) => r.data);
+}
+
 export function adminApprove(id) {
   return apiClient.post(`/api/merchants/admin/${id}/approve`).then((r) => r.data);
 }

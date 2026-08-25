@@ -18,4 +18,6 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
     List<Merchant> findByStatus(MerchantStatus status);
 
     List<Merchant> findByStatusAndCityIgnoreCase(MerchantStatus status, String city);
+
+    List<Merchant> findAllByOrderByCreatedAtDesc();
 }

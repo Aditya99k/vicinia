@@ -115,6 +115,11 @@ public class MerchantService {
         return merchantRepository.findByStatusOrderByCreatedAtAsc(MerchantStatus.PENDING_REVIEW);
     }
 
+    /** Every merchant regardless of status, newest first — the admin's record of everyone it has ever reviewed, not just the still-pending queue. */
+    public List<Merchant> all() {
+        return merchantRepository.findAllByOrderByCreatedAtDesc();
+    }
+
     /**
      * PENDING_REVIEW -> APPROVED -> ONBOARDING in one call: the event fires
      * at APPROVED (ARCHITECTURE.md §10 workflow B), then the service

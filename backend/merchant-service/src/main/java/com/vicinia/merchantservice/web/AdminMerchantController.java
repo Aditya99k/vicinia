@@ -42,6 +42,13 @@ public class AdminMerchantController {
         return merchantService.pendingReview().stream().map(MerchantResponse::from).toList();
     }
 
+    /** Every merchant regardless of status — the admin's full record, so approving one doesn't make it disappear from view. */
+    @GetMapping("/all")
+    public List<MerchantResponse> all(@RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions) {
+        PermissionUtil.require(permissions, REQUIRED_PERMISSION);
+        return merchantService.all().stream().map(MerchantResponse::from).toList();
+    }
+
     @PostMapping("/{id}/approve")
     public MerchantResponse approve(@RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions,
                                      @PathVariable String id) {

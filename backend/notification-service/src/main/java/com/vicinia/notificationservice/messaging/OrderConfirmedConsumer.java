@@ -13,6 +13,14 @@ import org.springframework.stereotype.Component;
  * order-events also carries order.created, merchant.accepted,
  * merchant.rejected, and order.ready (Stage 11) — this consumer, like
  * ARCHITECTURE.md §7's table, only cares about order.confirmed.
+ *
+ * <p>Notifies both sides of the same event: the customer ("your order is
+ * confirmed") and the merchant ("you have a new order") — found and fixed
+ * as a real gap (the merchantId was already on the payload but never
+ * read). The two calls need distinct eventIds — record()'s idempotency
+ * is a plain existsByEventId check, so reusing the envelope's own eventId
+ * for both would make the second call a silent no-op, not a second
+ * notification.
  */
 @Component
 public class OrderConfirmedConsumer {
@@ -34,9 +42,17 @@ public class OrderConfirmedConsumer {
         }
         String orderId = (String) envelope.payload().get("orderId");
         String userId = (String) envelope.payload().get("userId");
+        String merchantId = (String) envelope.payload().get("merchantId");
+
         notificationService.record(envelope.eventId(), envelope.eventType(), userId,
                 "Order confirmed",
                 "Your order " + orderId + " has been confirmed and is being prepared.");
+
+        if (merchantId != null) {
+            notificationService.record(envelope.eventId() + ":merchant", envelope.eventType(), merchantId,
+                    "New order received",
+                    "You have a new order (" + orderId + ") to prepare.");
+        }
     }
 
     @DltHandler

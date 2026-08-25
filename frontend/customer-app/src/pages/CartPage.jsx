@@ -5,11 +5,15 @@ import { validateCoupon } from '../api/coupon';
 import { MinusIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { EmptyBoxIllustration } from '../components/Illustrations';
 import ShopBanner from '../components/ShopBanner';
+import ProductImage from '../components/ProductImage';
+import { useProductImages } from '../hooks/useProductImages';
+import { useActionDialog } from '../hooks/useActionDialog';
 import { formatMoney } from '../utils/format';
 
 export default function CartPage() {
   const { cart, loading, updateItem, removeItem, clear } = useCart();
   const navigate = useNavigate();
+  const { confirm, dialog } = useActionDialog();
 
   const [couponCode, setCouponCode] = useState('');
   const [couponResult, setCouponResult] = useState(null);
@@ -19,6 +23,12 @@ export default function CartPage() {
 
   const items = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
+  const imageFor = useProductImages(items.map((i) => i.productId));
+
+  async function handleClearCart() {
+    if (!(await confirm('Remove all items from your cart?', { title: 'Clear cart', danger: true, confirmLabel: 'Clear cart' }))) return;
+    await clear();
+  }
 
   async function handleQty(listingId, quantity) {
     setBusyListingId(listingId);
@@ -58,6 +68,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="empty-state">
+        {dialog}
         <EmptyBoxIllustration />
         <h3>Your cart is empty</h3>
         <p>Search for products and add them to your cart to see them here.</p>
@@ -68,6 +79,7 @@ export default function CartPage() {
 
   return (
     <div className="cart-page">
+      {dialog}
       <h1 style={{ fontSize: 22, marginBottom: 4 }}>Your cart</h1>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
         {items.length} item{items.length === 1 ? '' : 's'} from one store
@@ -78,6 +90,9 @@ export default function CartPage() {
         <div className="cart-items card">
           {items.map((item) => (
             <div className="cart-item" key={item.listingId}>
+              <div className="cart-item-thumb">
+                <ProductImage src={imageFor(item.productId)} name={item.productName} />
+              </div>
               <div className="cart-item-body">
                 <div className="name">{item.productName}</div>
                 {item.available ? (
@@ -106,7 +121,9 @@ export default function CartPage() {
               </button>
             </div>
           ))}
-          <button className="btn-danger-ghost" onClick={clear} style={{ marginTop: 4 }}>Clear cart</button>
+          <button className="btn btn-outline-danger btn-sm" onClick={handleClearCart} style={{ marginTop: 10 }}>
+            <TrashIcon style={{ width: 14, height: 14 }} /> Clear cart
+          </button>
         </div>
 
         <div>

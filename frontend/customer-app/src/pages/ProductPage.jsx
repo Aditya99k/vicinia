@@ -5,7 +5,7 @@ import { listingsForProduct } from '../api/inventory';
 import { productRating, productReviews } from '../api/review';
 import { useCart } from '../context/CartContext';
 import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
-import { ArrowLeftIcon, StarIcon } from '../components/Icons';
+import { ArrowLeftIcon, StarIcon, StoreIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
 import { formatMoney, formatDate } from '../utils/format';
 
@@ -114,21 +114,26 @@ export default function ProductPage() {
             <div className="listing-list">
               {listings.map((l) => {
                 const inThisCart = cart?.merchantId === l.merchantId;
+                const cartQuantity = cart?.items?.find((i) => i.listingId === l.id)?.quantity || 0;
                 const storeName = directory.get(l.merchantId)?.storeName;
                 const highlighted = l.id === highlightedListingId;
                 return (
                   <div className={`listing-row ${highlighted ? 'highlighted' : ''}`} key={l.id}>
-                    <div>
+                    <div className="merchant-tile-icon"><StoreIcon /></div>
+                    <div className="listing-info">
                       {storeName && <div className="listing-store">{storeName}</div>}
-                      <div className="price">{formatMoney(l.price)}</div>
-                      <div className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</div>
+                      <div className="listing-price-row">
+                        <span className="price">{formatMoney(l.price)}</span>
+                        <span className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</span>
+                        {cartQuantity > 0 && <span className="badge badge-success">{cartQuantity} in cart</span>}
+                      </div>
                     </div>
                     <button
                       className={`btn btn-sm ${inThisCart ? 'btn-secondary' : 'btn-primary'}`}
                       disabled={l.availableStock === 0 || addingId === l.id}
                       onClick={() => handleAdd(l)}
                     >
-                      {addingId === l.id ? <span className="spinner" /> : inThisCart ? 'Add another' : 'Add to cart'}
+                      {addingId === l.id ? <span className="spinner" /> : cartQuantity > 0 ? 'Add another' : 'Add to cart'}
                     </button>
                   </div>
                 );

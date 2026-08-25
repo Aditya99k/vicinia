@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { adminApproveProduct, adminCreateCategory, adminCreateProduct, adminPendingProducts, adminRejectProduct, getCategories } from '../../api/catalog';
 import { EmptyBoxIllustration } from '../../components/Illustrations';
 import { PlusIcon } from '../../components/Icons';
+import { useActionDialog } from '../../hooks/useActionDialog';
 
 export default function AdminProductsPage() {
+  const { promptText, dialog } = useActionDialog();
   const [pending, setPending] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function AdminProductsPage() {
   }
 
   async function handleReject(id) {
-    const reason = window.prompt('Reason for rejecting this product?');
+    const reason = await promptText('Reason for rejecting this product?', { title: 'Reject product', placeholder: 'e.g. Duplicate of an existing entry' });
     if (reason === null) return;
     setBusyId(id);
     setError('');
@@ -89,6 +91,7 @@ export default function AdminProductsPage() {
 
   return (
     <div>
+      {dialog}
       <h1 style={{ fontSize: 22, marginBottom: 4 }}>Catalog moderation</h1>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18 }}>Review merchant-submitted products and manage categories.</p>
 

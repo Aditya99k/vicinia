@@ -5,6 +5,7 @@ import { createReview } from '../api/review';
 import { ArrowLeftIcon, CheckCircleIcon, PackageIcon, StarIcon, TruckIcon } from '../components/Icons';
 import StatusBadge from '../components/StatusBadge';
 import ShopBanner from '../components/ShopBanner';
+import { useActionDialog } from '../hooks/useActionDialog';
 import { formatDateTime, formatMoney } from '../utils/format';
 
 const HAPPY_PATH = [
@@ -30,6 +31,7 @@ export default function OrderDetailPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewedIds, setReviewedIds] = useState(new Set());
+  const { confirm, dialog } = useActionDialog();
 
   function load() {
     setLoading(true);
@@ -39,7 +41,7 @@ export default function OrderDetailPage() {
   useEffect(load, [id]);
 
   async function handleCancel() {
-    if (!window.confirm('Cancel this order?')) return;
+    if (!(await confirm('Cancel this order?', { title: 'Cancel order', danger: true, confirmLabel: 'Cancel order' }))) return;
     setCancelling(true);
     try {
       await cancelOrder(id, 'Changed my mind');
@@ -74,6 +76,7 @@ export default function OrderDetailPage() {
 
   return (
     <div className="order-detail">
+      {dialog}
       <Link to="/orders" className="back-link"><ArrowLeftIcon style={{ width: 15, height: 15 }} /> Back to orders</Link>
 
       <div className="addresses-header">

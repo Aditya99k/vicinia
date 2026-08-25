@@ -2,6 +2,7 @@ package com.vicinia.merchantservice.dto;
 
 import com.vicinia.merchantservice.domain.Merchant;
 
+import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -22,7 +23,9 @@ public record MerchantResponse(
         String status,
         String rejectionReason,
         String suspensionReason,
-        List<String> documentTypes
+        List<String> documentTypes,
+        Instant createdAt,
+        Instant updatedAt
 ) {
     public static MerchantResponse from(Merchant m) {
         return new MerchantResponse(
@@ -42,7 +45,9 @@ public record MerchantResponse(
                 m.getStatus().name(),
                 m.getRejectionReason(),
                 m.getSuspensionReason(),
-                m.getDocuments().stream().map(com.vicinia.merchantservice.domain.MerchantDocument::getDocumentType).toList()
+                m.getDocuments().stream().map(com.vicinia.merchantservice.domain.MerchantDocument::getDocumentType).toList(),
+                m.getCreatedAt(),
+                m.getUpdatedAt()
         );
     }
 }
