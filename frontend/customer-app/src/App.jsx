@@ -10,6 +10,7 @@ import SignupPage from './pages/SignupPage';
 
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
+import StorePage from './pages/StorePage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -54,6 +55,7 @@ export default function App() {
               {/* Customer */}
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/store/:merchantId" element={<StorePage />} />
               <Route path="/product/:id" element={<ProductPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />

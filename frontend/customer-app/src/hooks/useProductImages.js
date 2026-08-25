@@ -3,11 +3,11 @@ import { getProduct } from '../api/catalog';
 
 /**
  * CartItemResponse and ListingResponse both carry productId/productName
- * but never an image (see frontend/customer-app/README.md) — to show a
- * thumbnail in the cart or on a product's "available from" list, this
- * resolves productId -> image URL by fetching each product once, cached
- * module-wide by id so navigating between pages never re-fetches the
- * same product's image twice.
+ * but never an image or category (see frontend/customer-app/README.md) —
+ * to show a thumbnail (and its category-glyph fallback) in the cart, this
+ * resolves productId -> {image, category} by fetching each product once,
+ * cached module-wide by id so navigating between pages never re-fetches
+ * the same product twice.
  */
 const cache = new Map();
 const inflight = new Map();
@@ -23,10 +23,10 @@ export function useProductImages(productIds) {
     missing.forEach((id) => {
       const promise = getProduct(id)
         .then((p) => {
-          cache.set(id, p.images?.[0] || null);
+          cache.set(id, { image: p.images?.[0] || null, category: p.category || null });
         })
         .catch(() => {
-          cache.set(id, null);
+          cache.set(id, { image: null, category: null });
         })
         .finally(() => {
           inflight.delete(id);
@@ -37,5 +37,8 @@ export function useProductImages(productIds) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  return (productId) => cache.get(productId) || null;
+  return {
+    imageFor: (productId) => cache.get(productId)?.image || null,
+    categoryFor: (productId) => cache.get(productId)?.category || null,
+  };
 }

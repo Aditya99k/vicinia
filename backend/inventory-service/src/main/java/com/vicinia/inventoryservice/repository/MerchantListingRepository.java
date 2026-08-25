@@ -17,6 +17,8 @@ public interface MerchantListingRepository extends JpaRepository<MerchantListing
 
     List<MerchantListing> findByProductIdAndActiveTrue(String productId);
 
+    List<MerchantListing> findByMerchantIdAndActiveTrueOrderByCreatedAtDesc(UUID merchantId);
+
     /**
      * ADR 0002 — the atomic conditional UPDATE the oversell guarantee rests
      * on. Postgres takes a row lock for the duration of this statement, so

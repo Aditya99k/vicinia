@@ -23,7 +23,7 @@ export default function CartPage() {
 
   const items = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
-  const imageFor = useProductImages(items.map((i) => i.productId));
+  const { imageFor, categoryFor } = useProductImages(items.map((i) => i.productId));
 
   async function handleClearCart() {
     if (!(await confirm('Remove all items from your cart?', { title: 'Clear cart', danger: true, confirmLabel: 'Clear cart' }))) return;
@@ -91,7 +91,7 @@ export default function CartPage() {
           {items.map((item) => (
             <div className="cart-item" key={item.listingId}>
               <div className="cart-item-thumb">
-                <ProductImage src={imageFor(item.productId)} name={item.productName} />
+                <ProductImage src={imageFor(item.productId)} name={item.productName} category={categoryFor(item.productId)} />
               </div>
               <div className="cart-item-body">
                 <div className="name">{item.productName}</div>

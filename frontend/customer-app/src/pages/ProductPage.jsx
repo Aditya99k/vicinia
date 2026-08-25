@@ -79,7 +79,7 @@ export default function ProductPage() {
 
       <div className="product-detail-grid">
         <div className="product-detail-image">
-          <ProductImage src={product.images?.[0]} name={product.name} large />
+          <ProductImage src={product.images?.[0]} name={product.name} category={product.category} large />
         </div>
 
         <div>

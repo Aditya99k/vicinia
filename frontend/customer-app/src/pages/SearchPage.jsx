@@ -58,7 +58,7 @@ export default function SearchPage() {
           {products.map((p) => (
             <Link to={`/product/${p.id}`} className="product-card" key={p.id}>
               <div className="product-card-image">
-                <ProductImage src={p.images?.[0]} name={p.name} />
+                <ProductImage src={p.images?.[0]} name={p.name} category={p.category} />
               </div>
               <div className="product-card-body">
                 <div className="brand">{p.brand}</div>

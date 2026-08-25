@@ -16,6 +16,10 @@ export function listingsForProduct(productId) {
   return apiClient.get(`/api/inventory/listings/product/${productId}`).then((r) => r.data);
 }
 
+export function listingsForMerchant(merchantId) {
+  return apiClient.get(`/api/inventory/listings/merchant/${merchantId}`).then((r) => r.data);
+}
+
 export function getListing(id) {
   return apiClient.get(`/api/inventory/listings/${id}`).then((r) => r.data);
 }

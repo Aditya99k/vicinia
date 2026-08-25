@@ -83,7 +83,7 @@ export default function SearchBox({ initialQuery = '' }) {
             <>
               {suggestions.map((p) => (
                 <button type="button" className="search-suggestion-row" key={p.id} onClick={() => goToProduct(p.id)}>
-                  <div className="search-suggestion-thumb"><ProductImage src={p.images?.[0]} name={p.name} /></div>
+                  <div className="search-suggestion-thumb"><ProductImage src={p.images?.[0]} name={p.name} category={p.category} small /></div>
                   <div className="search-suggestion-body">
                     <div className="name">{p.name}</div>
                     <div className="muted">{p.brand} · {p.category}</div>

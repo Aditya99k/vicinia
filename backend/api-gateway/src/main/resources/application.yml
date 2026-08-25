@@ -142,6 +142,7 @@ vicinia:
       - /api/catalog/categories
       - /api/merchants/nearby
       - /api/inventory/listings/product/*
+      - /api/inventory/listings/merchant/*
       - /api/reviews/products/**
       # Razorpay's own servers call this, not a logged-in user — it will
       # never carry a JWT. Security here is entirely the HMAC-SHA256

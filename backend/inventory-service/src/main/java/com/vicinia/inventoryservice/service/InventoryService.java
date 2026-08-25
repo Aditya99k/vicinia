@@ -86,6 +86,11 @@ public class InventoryService {
         return listingRepository.findByProductIdAndActiveTrue(productId);
     }
 
+    /** A store's own public catalog — customer-facing (Stage 18's shop page), same active-only shape as byProduct. */
+    public List<MerchantListing> byMerchant(UUID merchantId) {
+        return listingRepository.findByMerchantIdAndActiveTrueOrderByCreatedAtDesc(merchantId);
+    }
+
     @Transactional
     public MerchantListing updateListing(UUID merchantId, UUID listingId, UpdateListingRequest request) {
         MerchantListing listing = getById(listingId);

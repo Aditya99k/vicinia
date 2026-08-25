@@ -1,31 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
 import { getProfile, listAddresses } from '../api/user';
 import { getCategories } from '../api/catalog';
 import { nearby } from '../api/merchant';
-import { CheckCircleIcon, ChevronRightIcon, MapPinIcon } from '../components/Icons';
-import { GroceryBagIllustration } from '../components/Illustrations';
+import { CheckCircleIcon, ChevronRightIcon, ClockIcon, MapPinIcon, NavigationIcon, PackageIcon } from '../components/Icons';
+import { GroceryBagIllustration, StorefrontIllustration } from '../components/Illustrations';
 import CategoryGlyphFor from '../components/CategoryGlyphFor';
-import ProductImage from '../components/ProductImage';
-import { loadNearbyListings } from '../utils/loadNearbyListings';
-import { formatMoney } from '../utils/format';
+import { loadShops } from '../utils/loadShops';
+import { estimateDelivery } from '../utils/deliveryEstimate';
 
 export default function HomePage() {
   const { auth } = useAuth();
-  const { addItem } = useCart();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [profilePending, setProfilePending] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [merchants, setMerchants] = useState([]);
-  const [nearbyListings, setNearbyListings] = useState([]);
-  const [listingsLoading, setListingsLoading] = useState(false);
+  const [shops, setShops] = useState([]);
+  const [shopsLoading, setShopsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [addingId, setAddingId] = useState(null);
-  const [addedId, setAddedId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -65,32 +60,15 @@ export default function HomePage() {
     // (MerchantSummaryResponse doesn't even carry a status field) — no
     // client-side status filter needed or possible here.
     if (merchants.length === 0) return;
-    setListingsLoading(true);
-    loadNearbyListings(merchants)
-      .then(setNearbyListings)
-      .catch(() => setNearbyListings([]))
-      .finally(() => setListingsLoading(false));
+    setShopsLoading(true);
+    loadShops(merchants)
+      .then(setShops)
+      .catch(() => setShops([]))
+      .finally(() => setShopsLoading(false));
   }, [merchants]);
 
   const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
   const displayName = profile?.fullName || auth?.email?.split('@')[0] || 'there';
-
-  async function handleQuickAdd(e, item) {
-    e.preventDefault();
-    e.stopPropagation();
-    setAddingId(item.id);
-    try {
-      await addItem(item.id, 1);
-      setAddedId(item.id);
-      setTimeout(() => setAddedId(null), 1500);
-    } catch (err) {
-      if (err?.response?.status === 409) {
-        navigate(`/product/${item.productId}?listing=${item.id}`);
-      }
-    } finally {
-      setAddingId(null);
-    }
-  }
 
   return (
     <div className="home-grid">
@@ -134,41 +112,34 @@ export default function HomePage() {
 
         {merchants.length > 0 && (
           <>
-            <div className="section-title"><span>Popular near you</span></div>
-            {listingsLoading ? (
+            <div className="section-title"><span>Shops near you</span></div>
+            {shopsLoading ? (
               <div className="page-loading"><span className="spinner" /> Loading…</div>
-            ) : nearbyListings.length === 0 ? (
+            ) : shops.length === 0 ? (
               <p style={{ fontSize: 13, color: 'var(--muted)' }}>No stores near you have items listed yet.</p>
             ) : (
-              <div className="product-grid">
-                {nearbyListings.map((item) => (
-                  <Link to={`/product/${item.productId}?listing=${item.id}`} className="product-card" key={item.id}>
-                    <div className="product-card-image">
-                      <ProductImage src={item.productImage} name={item.productName} />
-                    </div>
-                    <div className="product-card-body">
-                      <div className="brand">{item.productBrand}</div>
-                      <div className="name">{item.productName}</div>
-                      <div className="product-card-store">{item.storeName}</div>
-                    </div>
-                    <div className="product-card-price-row">
-                      <span className="price">{formatMoney(item.price)}</span>
-                      <button
-                        className={`btn btn-sm ${addedId === item.id ? 'btn-secondary' : 'btn-primary'}`}
-                        onClick={(e) => handleQuickAdd(e, item)}
-                        disabled={addingId === item.id}
-                      >
-                        {addingId === item.id ? (
-                          <span className="spinner" />
-                        ) : addedId === item.id ? (
-                          <CheckCircleIcon style={{ width: 14, height: 14 }} />
-                        ) : (
-                          'Add'
-                        )}
-                      </button>
-                    </div>
-                  </Link>
-                ))}
+              <div className="shop-grid">
+                {shops.map(({ merchant, itemCount }) => {
+                  const { distanceLabel, etaLabel } = estimateDelivery(merchant);
+                  return (
+                    <Link to={`/store/${merchant.ownerUserId}`} className="shop-card" key={merchant.ownerUserId}>
+                      <div className="shop-card-banner">
+                        <StorefrontIllustration />
+                        <div className="shop-card-eta"><ClockIcon /> {etaLabel}</div>
+                      </div>
+                      <div className="shop-card-body">
+                        <div className="name">{merchant.storeName}</div>
+                        <div className="shop-card-meta">
+                          <span className="distance"><NavigationIcon /> {distanceLabel}</span>
+                          <span className="dot" />
+                          <span className="distance"><PackageIcon /> {itemCount} item{itemCount === 1 ? '' : 's'}</span>
+                          <span className="dot" />
+                          <span>{merchant.city}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </>
