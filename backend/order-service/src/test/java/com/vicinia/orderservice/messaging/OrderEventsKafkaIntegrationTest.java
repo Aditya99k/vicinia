@@ -56,8 +56,13 @@ class OrderEventsKafkaIntegrationTest {
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
     @Container
-    static KafkaContainer kafka = new KafkaContainer(
-            DockerImageName.parse("apache/kafka:3.7.1").asCompatibleSubstituteFor("confluentinc/cp-kafka"));
+    // The native apache/kafka image's startup log format doesn't match this
+    // Testcontainers version's wait strategy (calibrated for cp-kafka's
+    // ZooKeeper-era "[KafkaServer id=N] started" line) — asCompatibleSubstituteFor
+    // only bypasses the image-name check, not the wait condition, so the
+    // container still timed out. confluentinc/cp-kafka is what this class
+    // actually supports.
+    static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
 
     @org.springframework.test.context.DynamicPropertySource
     static void kafkaProperties(org.springframework.test.context.DynamicPropertyRegistry registry) {
