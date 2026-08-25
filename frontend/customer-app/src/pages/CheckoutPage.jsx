@@ -6,6 +6,7 @@ import { getWalletBalance } from '../api/payment';
 import { placeOrder } from '../api/order';
 import { getOrder } from '../api/order';
 import { CreditCardIcon, MapPinIcon, WalletIcon } from '../components/Icons';
+import ShopBanner from '../components/ShopBanner';
 import { formatMoney } from '../utils/format';
 
 function loadRazorpayScript() {
@@ -95,7 +96,8 @@ export default function CheckoutPage() {
 
   return (
     <div className="checkout-page">
-      <h1 style={{ fontSize: 22, marginBottom: 20 }}>Checkout</h1>
+      <h1 style={{ fontSize: 22, marginBottom: 4 }}>Checkout</h1>
+      <div style={{ marginBottom: 16 }}><ShopBanner merchantId={cart?.merchantId} /></div>
 
       <div className="cart-layout">
         <div>

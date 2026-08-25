@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { validateCoupon } from '../api/coupon';
 import { MinusIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { EmptyBoxIllustration } from '../components/Illustrations';
+import ShopBanner from '../components/ShopBanner';
 import { formatMoney } from '../utils/format';
 
 export default function CartPage() {
@@ -68,9 +69,10 @@ export default function CartPage() {
   return (
     <div className="cart-page">
       <h1 style={{ fontSize: 22, marginBottom: 4 }}>Your cart</h1>
-      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
         {items.length} item{items.length === 1 ? '' : 's'} from one store
       </p>
+      <ShopBanner merchantId={cart?.merchantId} />
 
       <div className="cart-layout">
         <div className="cart-items card">

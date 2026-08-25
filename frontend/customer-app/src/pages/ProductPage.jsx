@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getProduct } from '../api/catalog';
 import { listingsForProduct } from '../api/inventory';
 import { productRating, productReviews } from '../api/review';
 import { useCart } from '../context/CartContext';
+import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
 import { ArrowLeftIcon, StarIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
 import { formatMoney, formatDate } from '../utils/format';
 
 export default function ProductPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const highlightedListingId = searchParams.get('listing');
   const { cart, addItem, clear } = useCart();
+  const directory = useMerchantDirectory();
 
   const [product, setProduct] = useState(null);
   const [listings, setListings] = useState([]);
@@ -30,11 +34,18 @@ export default function ProductPage() {
       productReviews(id),
     ]).then(([p, l, r, rv]) => {
       if (p.status === 'fulfilled') setProduct(p.value);
-      if (l.status === 'fulfilled') setListings(l.value.filter((x) => x.active));
+      if (l.status === 'fulfilled') {
+        const active = l.value.filter((x) => x.active);
+        // A specific listing (e.g. clicked from a store's own tile on the home
+        // page) sorts first, so "Add to cart" naturally adds the item the
+        // customer actually meant, not just whichever offer the API listed first.
+        active.sort((a, b) => (a.id === highlightedListingId ? -1 : b.id === highlightedListingId ? 1 : 0));
+        setListings(active);
+      }
       if (r.status === 'fulfilled') setRating(r.value);
       if (rv.status === 'fulfilled') setReviews(rv.value);
     }).finally(() => setLoading(false));
-  }, [id]);
+  }, [id, highlightedListingId]);
 
   async function handleAdd(listing) {
     setAddingId(listing.id);
@@ -103,9 +114,12 @@ export default function ProductPage() {
             <div className="listing-list">
               {listings.map((l) => {
                 const inThisCart = cart?.merchantId === l.merchantId;
+                const storeName = directory.get(l.merchantId)?.storeName;
+                const highlighted = l.id === highlightedListingId;
                 return (
-                  <div className="listing-row" key={l.id}>
+                  <div className={`listing-row ${highlighted ? 'highlighted' : ''}`} key={l.id}>
                     <div>
+                      {storeName && <div className="listing-store">{storeName}</div>}
                       <div className="price">{formatMoney(l.price)}</div>
                       <div className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</div>
                     </div>

@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../hooks/useTheme';
 import { homePathForRole, primaryRole } from '../utils/roles';
 import { CartIcon, MoonIcon, SunIcon } from './Icons';
+import SearchBox from './SearchBox';
 
 const SECTION_LINKS = {
   CUSTOMER: [
@@ -52,13 +52,8 @@ export default function Navbar() {
   const links = SECTION_LINKS[section] || SECTION_LINKS.CUSTOMER;
   const showCommerceChrome = section === 'CUSTOMER';
 
-  const [query, setQuery] = useState(new URLSearchParams(location.search).get('q') || '');
   const { itemCount } = useCart();
-
-  function handleSearch(e) {
-    e.preventDefault();
-    navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/');
-  }
+  const initialQuery = new URLSearchParams(location.search).get('q') || '';
 
   return (
     <header className="navbar">
@@ -68,19 +63,7 @@ export default function Navbar() {
           <span className="wordmark">Vicinia</span>
         </Link>
 
-        {showCommerceChrome && (
-          <form className="navbar-search" onSubmit={handleSearch}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <input
-              placeholder="Search for atta, dal, oil & more"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </form>
-        )}
+        {showCommerceChrome && <SearchBox key={location.pathname} initialQuery={initialQuery} />}
 
         <nav className="navbar-links">
           {links.map((l) => (

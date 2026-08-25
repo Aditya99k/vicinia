@@ -7,6 +7,9 @@ import { nearby } from '../api/merchant';
 import { CheckCircleIcon, ChevronRightIcon, MapPinIcon, StoreIcon } from '../components/Icons';
 import { GroceryBagIllustration } from '../components/Illustrations';
 import CategoryGlyphFor from '../components/CategoryGlyphFor';
+import ProductImage from '../components/ProductImage';
+import { loadStorefronts } from '../utils/loadStorefronts';
+import { formatMoney } from '../utils/format';
 
 export default function HomePage() {
   const { auth } = useAuth();
@@ -16,6 +19,8 @@ export default function HomePage() {
   const [addresses, setAddresses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [merchants, setMerchants] = useState([]);
+  const [storefronts, setStorefronts] = useState({});
+  const [storefrontsLoading, setStorefrontsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -50,6 +55,18 @@ export default function HomePage() {
     if (!city) return;
     nearby(city).then(setMerchants).catch(() => setMerchants([]));
   }, [addresses]);
+
+  useEffect(() => {
+    // /api/merchants/nearby only ever returns LIVE merchants server-side
+    // (MerchantSummaryResponse doesn't even carry a status field) — no
+    // client-side status filter needed or possible here.
+    if (merchants.length === 0) return;
+    setStorefrontsLoading(true);
+    loadStorefronts(merchants)
+      .then(setStorefronts)
+      .catch(() => setStorefronts({}))
+      .finally(() => setStorefrontsLoading(false));
+  }, [merchants]);
 
   const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
   const displayName = profile?.fullName || auth?.email?.split('@')[0] || 'there';
@@ -97,17 +114,38 @@ export default function HomePage() {
         {merchants.length > 0 && (
           <>
             <div className="section-title"><span>Stores near you</span></div>
-            <div className="merchant-row">
-              {merchants.map((m) => (
-                <div className="merchant-tile" key={m.id}>
-                  <div className="merchant-tile-icon"><StoreIcon /></div>
-                  <div className="merchant-tile-body">
-                    <div className="name">{m.storeName}</div>
-                    <div className="meta">{m.city} · {m.status === 'LIVE' ? 'Open' : m.status}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {storefrontsLoading ? (
+              <div className="page-loading"><span className="spinner" /> Loading…</div>
+            ) : (
+              <div className="storefront-grid">
+                {merchants
+                  .filter((m) => (storefronts[m.ownerUserId] || []).length > 0)
+                  .map((m) => {
+                    const items = storefronts[m.ownerUserId] || [];
+                    return (
+                      <div className="storefront" key={m.id}>
+                        <div className="storefront-head">
+                          <div className="merchant-tile-icon"><StoreIcon /></div>
+                          <div>
+                            <div className="name">{m.storeName}</div>
+                            <div className="meta">{m.city}</div>
+                          </div>
+                        </div>
+                        <div className="storefront-items">
+                          {items.map((item) => (
+                            <Link to={`/product/${item.productId}?listing=${item.id}`} className="storefront-item" key={item.id} title={item.productName}>
+                              <div className="storefront-item-image">
+                                <ProductImage src={item.productImage} name={item.productName} />
+                              </div>
+                              <div className="storefront-item-price">{formatMoney(item.price)}</div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </>
         )}
       </div>

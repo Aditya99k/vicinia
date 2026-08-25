@@ -4,6 +4,7 @@ import { cancelOrder, getOrder } from '../api/order';
 import { createReview } from '../api/review';
 import { ArrowLeftIcon, CheckCircleIcon, PackageIcon, StarIcon, TruckIcon } from '../components/Icons';
 import StatusBadge from '../components/StatusBadge';
+import ShopBanner from '../components/ShopBanner';
 import { formatDateTime, formatMoney } from '../utils/format';
 
 const HAPPY_PATH = [
@@ -82,6 +83,7 @@ export default function OrderDetailPage() {
         </div>
         <StatusBadge status={order.status} />
       </div>
+      <div style={{ marginBottom: 16 }}><ShopBanner merchantId={order.merchantId} /></div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
