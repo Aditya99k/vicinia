@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GroceryBagIllustration } from '../components/Illustrations';
+import { homePath } from '../utils/roles';
 
 const ROLES = [
   { value: 'CUSTOMER', label: 'Customer' },
@@ -31,8 +32,8 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup({ email, password, role });
-      navigate('/');
+      const data = await signup({ email, password, role });
+      navigate(homePath(data));
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not create your account.');
     } finally {

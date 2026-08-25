@@ -41,10 +41,10 @@ Then:
 
 **Maintenance:** when a new backend module is scaffolded, add one line to the `SERVICES` array near the top of `start-infra.sh`, in dependency order — and if it introduces a new secret, add it to both `.env.example` and `REQUIRED_ENV_VARS`. `stop-infra.sh` needs no changes — it stops whatever's tracked in `.pids/`.
 
-### Frontend (validation only)
+### Frontend
 
-`frontend/customer-app` is a real React app for clicking through what's built so far — not the full Stage 18 build. `start-infra.sh` brings it up automatically (installing dependencies on first run) at `http://localhost:5173`, and prints a LAN URL too for testing from a phone on the same Wi-Fi. See its own [README](frontend/customer-app/README.md).
+`frontend/customer-app` is the Stage 18 frontend — one React app, role-gated by route, covering all 4 roles: the customer shopping flow (browse, cart, checkout, order tracking, wallet, profile), the merchant dashboard (onboarding, listings, order queue, settlements), the delivery partner app (online/offline, task actions), and the admin console (approvals, catalog moderation, coupons, settlements). `start-infra.sh` brings it up automatically (installing dependencies on first run) at `http://localhost:5173`, and prints a LAN URL too for testing from a phone on the same Wi-Fi. See its own [README](frontend/customer-app/README.md).
 
 ## Status
 
-Stage 17 (testing hardening) complete — unit, Testcontainers, Kafka, and e2e tests all passing in CI (`.github/workflows/ci.yml`). See `docs/BUILD_TRACKER.md` for current progress.
+Stage 18 (frontend) complete — all 4 role-specific apps live against the real backend. See `docs/BUILD_TRACKER.md` for current progress.

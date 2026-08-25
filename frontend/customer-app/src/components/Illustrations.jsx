@@ -113,6 +113,72 @@ export function EmptyPinIllustration(props) {
   );
 }
 
+export function EmptyBoxIllustration(props) {
+  return (
+    <svg viewBox="0 0 160 160" fill="none" {...props}>
+      <circle cx="80" cy="80" r="70" fill="var(--surface-2)" />
+      <path d="M40 70 80 54l40 16v40l-40 16-40-16Z" fill="var(--brand-soft)" stroke="var(--line)" strokeWidth="2" />
+      <path d="M40 70l40 16 40-16" stroke="var(--line)" strokeWidth="2" />
+      <path d="M80 86v40" stroke="var(--line)" strokeWidth="2" />
+      <path d="M60 62l40 16" stroke="var(--faint)" strokeWidth="2" strokeDasharray="3 5" />
+    </svg>
+  );
+}
+
+export function StorefrontIllustration(props) {
+  return (
+    <svg viewBox="0 0 360 300" fill="none" {...props}>
+      <circle cx="180" cy="150" r="150" fill="var(--brand-soft)" />
+      <circle cx="66" cy="80" r="16" fill="var(--brand)" opacity="0.4" />
+      <circle cx="290" cy="210" r="20" fill="var(--brand)" opacity="0.3" />
+
+      <line x1="60" y1="240" x2="300" y2="240" stroke="var(--line)" strokeWidth="3" strokeLinecap="round" />
+
+      {/* awning */}
+      <path d="M90 118h180l-10-30H100Z" fill="var(--brand)" />
+      <path d="M90 118h30v-30h120v30h30" stroke="var(--brand-ink)" strokeWidth="0" fill="none" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <path key={i} d={`M${100 + i * 30} 88 l-10 30`} stroke="var(--surface)" strokeWidth="10" />
+      ))}
+
+      {/* building */}
+      <rect x="90" y="118" width="180" height="122" rx="6" fill="var(--surface)" stroke="var(--ink)" strokeWidth="6" />
+
+      {/* door */}
+      <rect x="160" y="176" width="40" height="64" rx="4" fill="var(--brand-ink)" opacity="0.85" />
+      <circle cx="190" cy="208" r="2.6" fill="var(--brand)" />
+
+      {/* windows */}
+      <rect x="108" y="150" width="34" height="28" rx="3" fill="var(--brand-soft)" stroke="var(--ink)" strokeWidth="4" />
+      <rect x="218" y="150" width="34" height="28" rx="3" fill="var(--brand-soft)" stroke="var(--ink)" strokeWidth="4" />
+
+      {/* sign */}
+      <rect x="140" y="92" width="80" height="20" rx="5" fill="var(--ink)" />
+      <path d="M154 102h52" stroke="var(--brand)" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ShieldIllustration(props) {
+  return (
+    <svg viewBox="0 0 280 280" fill="none" {...props}>
+      <circle cx="140" cy="140" r="130" fill="var(--brand-soft)" />
+      <circle cx="220" cy="70" r="16" fill="var(--brand)" opacity="0.4" />
+      <circle cx="56" cy="210" r="12" fill="var(--success)" opacity="0.3" />
+
+      <path
+        d="M140 46 200 68v58c0 46-26 74-60 92-34-18-60-46-60-92V68Z"
+        fill="var(--ink)"
+      />
+      <path
+        d="M140 60 188 78v46c0 37-21 59-48 74-27-15-48-37-48-74V78Z"
+        fill="var(--brand)"
+      />
+      <path d="m112 138 20 20 36-40" stroke="var(--brand-ink)" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
 function CategoryGlyph({ children }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -171,6 +237,44 @@ export function CareGlyph() {
     <CategoryGlyph>
       <rect x="8" y="7" width="8" height="13" rx="2.5" fill="#34B08A" stroke="none" />
       <rect x="10" y="3" width="4" height="4" rx="1" fill="#34B08A" stroke="none" />
+    </CategoryGlyph>
+  );
+}
+
+export function BeverageGlyph() {
+  return (
+    <CategoryGlyph>
+      <path d="M8 4h8l-1.5 15a1.5 1.5 0 0 1-1.5 1.3h-2a1.5 1.5 0 0 1-1.5-1.3Z" fill="#3E9BE0" stroke="none" />
+      <path d="M8 4h8" stroke="#0B6FB8" />
+      <path d="M9.5 10.5h5" stroke="#fff" opacity="0.65" />
+    </CategoryGlyph>
+  );
+}
+
+export function FrozenGlyph() {
+  return (
+    <CategoryGlyph>
+      <path d="M12 3v18M4.5 7.5l15 9M19.5 7.5l-15 9" stroke="#4CB6D8" strokeWidth="2" />
+      <circle cx="12" cy="12" r="2.2" fill="#4CB6D8" stroke="none" />
+    </CategoryGlyph>
+  );
+}
+
+export function HouseholdGlyph() {
+  return (
+    <CategoryGlyph>
+      <path d="M6 8h12l-1 12a1.5 1.5 0 0 1-1.5 1.3h-8A1.5 1.5 0 0 1 6 20Z" fill="#8C6BE0" stroke="none" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="#5A3FA6" />
+    </CategoryGlyph>
+  );
+}
+
+export function GrainGlyph() {
+  return (
+    <CategoryGlyph>
+      <rect x="6" y="6" width="12" height="14" rx="2" fill="#D8A54B" stroke="none" />
+      <path d="M9 6V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6" stroke="#8B6118" />
+      <path d="M9 11h6M9 15h6" stroke="#fff" opacity="0.6" />
     </CategoryGlyph>
   );
 }

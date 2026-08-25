@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as authApi from '../api/auth';
 import { DeliveryIllustration } from '../components/Illustrations';
+import { homePath } from '../utils/roles';
 
 function extractError(err, fallback) {
   return err?.response?.data?.error || fallback;
@@ -26,8 +27,8 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login({ email, password });
-      navigate('/');
+      const data = await login({ email, password });
+      navigate(homePath(data));
     } catch (err) {
       setError(extractError(err, 'Could not log in — check your email and password.'));
     } finally {

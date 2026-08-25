@@ -1,49 +1,40 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getProfile, listAddresses } from '../api/user';
-import { CheckCircleIcon, MapPinIcon } from '../components/Icons';
-import {
-  BakeryGlyph,
-  CareGlyph,
-  DairyGlyph,
-  FruitGlyph,
-  GroceryBagIllustration,
-  SnackGlyph,
-  VeggieGlyph,
-} from '../components/Illustrations';
-
-const CATEGORIES = [
-  { label: 'Fruits', Glyph: FruitGlyph },
-  { label: 'Vegetables', Glyph: VeggieGlyph },
-  { label: 'Dairy', Glyph: DairyGlyph },
-  { label: 'Bakery', Glyph: BakeryGlyph },
-  { label: 'Snacks', Glyph: SnackGlyph },
-  { label: 'Personal care', Glyph: CareGlyph },
-];
+import { getCategories } from '../api/catalog';
+import { nearby } from '../api/merchant';
+import { CheckCircleIcon, ChevronRightIcon, MapPinIcon, StoreIcon } from '../components/Icons';
+import { GroceryBagIllustration } from '../components/Illustrations';
+import CategoryGlyphFor from '../components/CategoryGlyphFor';
 
 export default function HomePage() {
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [profilePending, setProfilePending] = useState(false);
   const [addresses, setAddresses] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [merchants, setMerchants] = useState([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     setProfilePending(false);
     try {
-      const [profileData, addressList] = await Promise.allSettled([getProfile(), listAddresses()]);
+      const [profileData, addressList, cats] = await Promise.allSettled([
+        getProfile(),
+        listAddresses(),
+        getCategories(),
+      ]);
 
       if (profileData.status === 'fulfilled') {
         setProfile(profileData.value);
       } else if (profileData.reason?.response?.status === 404) {
         setProfilePending(true);
       }
-
-      if (addressList.status === 'fulfilled') {
-        setAddresses(addressList.value);
-      }
+      if (addressList.status === 'fulfilled') setAddresses(addressList.value);
+      if (cats.status === 'fulfilled') setCategories(cats.value);
     } finally {
       setLoading(false);
     }
@@ -53,6 +44,12 @@ export default function HomePage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const city = addresses.find((a) => a.isDefault)?.city || addresses[0]?.city;
+    if (!city) return;
+    nearby(city).then(setMerchants).catch(() => setMerchants([]));
+  }, [addresses]);
 
   const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
   const displayName = profile?.fullName || auth?.email?.split('@')[0] || 'there';
@@ -64,6 +61,9 @@ export default function HomePage() {
           <div className="copy">
             <span className="eyebrow">Good to see you</span>
             <h1>Hi {displayName} 👋</h1>
+            <p style={{ marginTop: 8, fontSize: 13.5, color: 'var(--muted)', maxWidth: '42ch' }}>
+              Fresh groceries and everyday essentials from local stores — search for what you need to get started.
+            </p>
           </div>
           <GroceryBagIllustration />
         </div>
@@ -72,8 +72,7 @@ export default function HomePage() {
           <div className="banner banner-success">
             <CheckCircleIcon style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1 }} />
             <span>
-              Setting up your profile — created by user-service reacting to your signup event on Kafka, usually a
-              second or two.{' '}
+              Setting up your profile — usually just a second or two.{' '}
               <button className="btn-ghost" style={{ padding: 0, display: 'inline', fontWeight: 700 }} onClick={load}>
                 Refresh
               </button>
@@ -82,20 +81,35 @@ export default function HomePage() {
         )}
 
         <div className="section-title"><span>Shop by category</span></div>
-        <div className="category-row">
-          {CATEGORIES.map(({ label, Glyph }) => (
-            <div className="category-pill" key={label} title="Catalog arrives in Stage 4">
-              <div className="glyph"><Glyph /></div>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="page-loading"><span className="spinner" /> Loading…</div>
+        ) : (
+          <div className="category-row">
+            {categories.map((c) => (
+              <Link className="category-pill" key={c.id} to={`/search?category=${encodeURIComponent(c.name)}`}>
+                <div className="glyph"><CategoryGlyphFor name={c.name} /></div>
+                <span>{c.name}</span>
+              </Link>
+            ))}
+          </div>
+        )}
 
-        <div className="coming-soon-card">
-          <span className="tag">Stage 3+</span>
-          <h4>Merchant &amp; catalog browsing is next</h4>
-          <p>Once merchant-service and catalog-service ship, real stores and products will show up here — this screen proves auth + profile + addresses work end to end for now.</p>
-        </div>
+        {merchants.length > 0 && (
+          <>
+            <div className="section-title"><span>Stores near you</span></div>
+            <div className="merchant-row">
+              {merchants.map((m) => (
+                <div className="merchant-tile" key={m.id}>
+                  <div className="merchant-tile-icon"><StoreIcon /></div>
+                  <div className="merchant-tile-body">
+                    <div className="name">{m.storeName}</div>
+                    <div className="meta">{m.city} · {m.status === 'LIVE' ? 'Open' : m.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div>
@@ -122,22 +136,27 @@ export default function HomePage() {
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>Add a delivery address</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
-                  So merchants near you can find you once catalog is live.
+                  So merchants near you can find you.
                 </div>
               </div>
             </Link>
           )}
         </div>
 
-        <div className="sidebar-card card">
-          <h4>Your account</h4>
-          <div className="chip-row">
-            {(auth?.roles || []).map((r) => <span key={r} className="badge">{r}</span>)}
+        <div className="sidebar-card card quick-link" onClick={() => navigate('/orders')}>
+          <div>
+            <h4 style={{ marginBottom: 2 }}>Your orders</h4>
+            <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>Track deliveries, reorder favorites</p>
           </div>
-          <div style={{ height: 8 }} />
-          <div className="chip-row">
-            {(auth?.permissions || []).map((p) => <span key={p} className="badge badge-muted">{p}</span>)}
+          <ChevronRightIcon style={{ width: 18, height: 18, color: 'var(--faint)' }} />
+        </div>
+
+        <div className="sidebar-card card quick-link" onClick={() => navigate('/wallet')}>
+          <div>
+            <h4 style={{ marginBottom: 2 }}>Wallet</h4>
+            <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>Top up for faster checkout</p>
           </div>
+          <ChevronRightIcon style={{ width: 18, height: 18, color: 'var(--faint)' }} />
         </div>
       </div>
     </div>

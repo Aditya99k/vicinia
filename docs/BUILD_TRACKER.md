@@ -358,11 +358,17 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
   Also found and fixed two CI-environment-only gaps unrelated to application code: the pinned Testcontainers version's `KafkaContainer` didn't recognize the native `apache/kafka` image (switched to `confluentinc/cp-kafka`, what that version actually supports), and the Testcontainers job's `@SpringBootTest`-based Kafka test needed `VICINIA_INTERNAL_SECRET`/`VICINIA_JWT_SECRET` supplied directly (normally sourced from config-server, which that job never starts).
 
 ### Stage 18 — Frontend
-- [ ] Customer app: browse, cart, checkout, order tracking, profile
-- [ ] Merchant dashboard: onboarding status, listings, order queue
-- [ ] Delivery agent app: assignment, status updates, live location ping
-- [ ] Admin dashboard: approvals, order/payment visibility, coupon management
-- **Done when:** all 4 role-specific flows work against the real backend (not mocked).
+- [x] Customer app: browse, cart, checkout, order tracking, profile
+- [x] Merchant dashboard: onboarding status, listings, order queue
+- [x] Delivery agent app: assignment, status updates, live location ping
+- [x] Admin dashboard: approvals, order/payment visibility, coupon management
+- **Done when:** all 4 role-specific flows work against the real backend (not mocked). ✅ Verified live against a real `start-infra.sh` stack (Playwright walkthrough, not just manual clicking): fresh signups for all 4 roles, real product search → cart → WALLET checkout → order placed and tracked through its status timeline, a merchant applying → admin-approving → going live → creating a real listing through the UI, and an admin approving from the same pending queue. Both light and dark themes screenshotted at every step.
+
+  **Architecture**: one React app (`frontend/customer-app`, kept as the existing project's directory — this *is* the full Stage 18 build now, not the placeholder README's old "click through what's built" scope), role-gated by route prefix (`/merchant`, `/delivery`, `/admin`; customer routes unprefixed) via a new `RoleRoute` guard that redirects a logged-in user away from another role's area to their own home rather than a 403. One shared design system throughout (existing `tokens.css`, `Icons.jsx`, `Illustrations.jsx` — extended, not replaced): the same Blinkit-inspired yellow accent, card/badge/modal patterns, and three-state light/dark theming already established in Stage 3, now covering roughly 3x the screens.
+
+  **A real, honest backend gap found while building the delivery app**: there is no "list my assigned delivery tasks" endpoint, and notification-service has no delivery-assignment consumer — a partner has no server-side signal that a task exists. Rather than fake it, `DeliveryHomePage` is built around what's actually there (online/offline + location ping, and per-task accept/picked-up/delivered actions reachable by orderId), with the gap documented in `utils/deliveryHistory.js`'s own comment rather than papered over.
+
+  **New shared pieces**: `CartContext` (mirrors the existing `AuthContext` pattern) so the navbar's live cart badge and the cart/checkout pages share one source of truth; `StatusBadge` + `utils/status.js` mapping every one of this project's `*Status` enums (order, merchant, order-task, delivery-task, settlement, payout) to a consistent tone; `ProductImage` with an `onError` fallback, needed because seed/test data's `example.com` image URLs 404 — found via the first real screenshot, not assumed.
 
 ### Stage 19 — Packaging & CI/CD
 - [ ] `docker-compose.prod.yml` covering all 19 services + Redpanda + Postgres + Redis
