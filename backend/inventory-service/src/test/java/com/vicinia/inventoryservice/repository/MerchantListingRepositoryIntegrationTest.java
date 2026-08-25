@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -116,6 +117,7 @@ class MerchantListingRepositoryIntegrationTest {
         CountDownLatch ready = new CountDownLatch(attempts);
         CountDownLatch go = new CountDownLatch(1);
         AtomicInteger successes = new AtomicInteger(0);
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
 
         for (int i = 0; i < attempts; i++) {
             pool.submit(() -> {
@@ -127,6 +129,8 @@ class MerchantListingRepositoryIntegrationTest {
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                } catch (RuntimeException e) {
+                    errors.add(e);
                 }
             });
         }
@@ -136,6 +140,7 @@ class MerchantListingRepositoryIntegrationTest {
         pool.shutdown();
         assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
 
+        assertThat(errors).isEmpty();
         assertThat(successes.get()).isEqualTo(10);
         MerchantListing reloaded = listingRepository.findById(listing.getId()).orElseThrow();
         assertThat(reloaded.getAvailableStock()).isEqualTo(0);
