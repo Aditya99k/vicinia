@@ -48,6 +48,16 @@ jobs:
 
       - name: mvn test (unit + Testcontainers integration, all services)
         working-directory: backend
+        # OrderEventsKafkaIntegrationTest boots the full order-service
+        # ApplicationContext (@SpringBootTest, not a @DataJpaTest slice),
+        # which needs vicinia.internal-secret/vicinia.jwt.secret — normally
+        # supplied by config-server (config-repo/application.yml), which
+        # this job never starts. Spring's relaxed env-var binding resolves
+        # them locally instead, with a value that only needs to be
+        # internally consistent for this one JVM's lifetime.
+        env:
+          VICINIA_INTERNAL_SECRET: ci-test-internal-secret
+          VICINIA_JWT_SECRET: ci-test-jwt-secret-at-least-32-bytes-long
         run: mvn -B test
 
   e2e:
