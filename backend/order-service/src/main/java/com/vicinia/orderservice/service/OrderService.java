@@ -287,4 +287,9 @@ public class OrderService {
         order.transitionTo(OrderStatus.CONFIRMED);
         return orderRepository.save(order);
     }
+
+    /** review-service's eligibility gate (Stage 13) — read-only, no state to mutate here. */
+    public boolean hasDeliveredProduct(UUID userId, String productId) {
+        return orderRepository.existsByUserIdAndStatusAndItems_ProductId(userId, OrderStatus.DELIVERED, productId);
+    }
 }

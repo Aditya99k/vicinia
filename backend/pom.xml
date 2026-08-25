@@ -50,6 +50,7 @@
         <module>order-service</module>
         <module>delivery-service</module>
         <module>notification-service</module>
+        <module>review-service</module>
     </modules>
 
     <dependencyManagement>

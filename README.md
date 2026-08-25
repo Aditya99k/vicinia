@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 12 (notification) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 13 (review) — see `docs/BUILD_TRACKER.md` for current progress.
