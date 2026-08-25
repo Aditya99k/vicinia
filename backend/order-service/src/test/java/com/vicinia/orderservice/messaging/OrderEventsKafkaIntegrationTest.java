@@ -56,7 +56,8 @@ class OrderEventsKafkaIntegrationTest {
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
     @Container
-    static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.1"));
+    static KafkaContainer kafka = new KafkaContainer(
+            DockerImageName.parse("apache/kafka:3.7.1").asCompatibleSubstituteFor("confluentinc/cp-kafka"));
 
     @org.springframework.test.context.DynamicPropertySource
     static void kafkaProperties(org.springframework.test.context.DynamicPropertyRegistry registry) {
