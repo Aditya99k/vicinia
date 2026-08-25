@@ -23,6 +23,22 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+    consumer:
+      # First consumer this service has — order.confirmed, to create an
+      # order task for the owning merchant to accept/reject (Stage 11,
+      # pulled forward — see BUILD_TRACKER.md's notes). Deliberately
+      # latest, not earliest — same reasoning as cart-service's own
+      # order.confirmed consumer (Stage 8/10): there's no useful action on
+      # a stale historical order.confirmed from before this consumer
+      # existed, and the orders confirmed during Stages 8-10's testing were
+      # never meant to be accepted/prepared for real.
+      group-id: merchant-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.merchantservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.merchantservice.messaging.OrderEventEnvelope
 
 management:
   endpoints:

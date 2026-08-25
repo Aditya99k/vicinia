@@ -1,0 +1,70 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: delivery-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/delivery_db
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      # user-events (auto-provision a partner record on user.registered,
+      # mirroring payment-service's wallet auto-provisioning) and
+      # order-events (order.ready triggers assignment). Deliberately
+      # earliest for user-events — this is a brand-new consumer group and
+      # should backfill any DELIVERY_PARTNER-role user that signed up
+      # before this service existed, same as inventory-service's Stage 5
+      # backfill. There's no equivalent backfill value for order-events
+      # (a stale historical order.ready has nothing useful to assign
+      # anymore), but Kafka's auto-offset-reset is a consumer-group-wide
+      # setting, not per-topic — earliest here is a deliberate, harmless
+      # trade: any old order.ready would just create a task for an order
+      # that's long since moved on, caught by the idempotent
+      # findByOrderId check in DeliveryService.createAndAssign.
+      group-id: delivery-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.deliveryservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.deliveryservice.messaging.IncomingEventEnvelope
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+vicinia:
+  delivery:
+    # How far to search for an online partner around a merchant's location.
+    search-radius-km: 15
+    # How often the reaper retries assignment for a task still stuck
+    # PENDING_ASSIGNMENT (no partner was available the first time) — same
+    # scheduled-reaper pattern as Stage 5's ReservationReaper.
+    reassignment-interval-ms: 30000

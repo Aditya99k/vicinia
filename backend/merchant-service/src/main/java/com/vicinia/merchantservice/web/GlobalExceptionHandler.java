@@ -1,10 +1,13 @@
 package com.vicinia.merchantservice.web;
 
 import com.vicinia.merchantservice.exception.ForbiddenException;
+import com.vicinia.merchantservice.exception.IllegalOrderTaskStatusException;
 import com.vicinia.merchantservice.exception.IllegalStatusTransitionException;
 import com.vicinia.merchantservice.exception.MerchantAlreadyExistsException;
 import com.vicinia.merchantservice.exception.MerchantNotFoundException;
+import com.vicinia.merchantservice.exception.MerchantOrderTaskNotFoundException;
 import com.vicinia.merchantservice.exception.OnboardingIncompleteException;
+import com.vicinia.merchantservice.exception.StoreLocationNotSetException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,6 +43,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OnboardingIncompleteException.class)
     public ResponseEntity<Map<String, Object>> handleIncomplete(RuntimeException e) {
+        return body(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(MerchantOrderTaskNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleOrderTaskNotFound(RuntimeException e) {
+        return body(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalOrderTaskStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalOrderTaskTransition(RuntimeException e) {
+        return body(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(StoreLocationNotSetException.class)
+    public ResponseEntity<Map<String, Object>> handleStoreLocationNotSet(RuntimeException e) {
         return body(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 

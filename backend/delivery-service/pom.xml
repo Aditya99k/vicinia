@@ -11,10 +11,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>merchant-service</artifactId>
+    <artifactId>delivery-service</artifactId>
     <packaging>jar</packaging>
-    <name>merchant-service</name>
-    <description>Merchant identity, onboarding state machine, admin approval (ARCHITECTURE.md §4.1/§7)</description>
+    <name>delivery-service</name>
+    <description>Delivery partner registration, live location, and order.ready-driven assignment (ARCHITECTURE.md §4.4-style Postgres+Redis GEO split, §6/§7/§9, Stage 11)</description>
 
     <dependencies>
         <dependency>
@@ -31,6 +31,13 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
+            <!-- Partner identity/task records live in Postgres; live location
+                 lives only in Redis GEO — the whole point of GEO is avoiding
+                 a DB write on every high-frequency location ping. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
@@ -43,7 +50,6 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
         <dependency>
-            <!-- Required by @RetryableTopic (this service's first consumer, Stage 11). -->
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
         </dependency>

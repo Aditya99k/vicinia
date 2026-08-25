@@ -113,7 +113,7 @@ public class OrderService {
 
         inventoryClient.confirm(order.getId());
         Order confirmed = markConfirmed(order);
-        eventPublisher.publishConfirmed(confirmed.getId(), userId);
+        eventPublisher.publishConfirmed(confirmed.getId(), userId, confirmed.getMerchantId());
         return PlaceOrderResult.wallet(confirmed);
     }
 
@@ -132,7 +132,7 @@ public class OrderService {
         }
         inventoryClient.confirm(orderId);
         Order confirmed = markConfirmed(order);
-        eventPublisher.publishConfirmed(confirmed.getId(), confirmed.getUserId());
+        eventPublisher.publishConfirmed(confirmed.getId(), confirmed.getUserId(), confirmed.getMerchantId());
     }
 
     public void failFromPaymentEvent(UUID orderId) {
@@ -142,6 +142,77 @@ public class OrderService {
         }
         inventoryClient.release(orderId);
         markPaymentFailed(order);
+    }
+
+    /**
+     * Reached only via OrderFulfillmentConsumer, from merchant-service's
+     * merchant.accepted event (Stage 11 — pulled forward, see
+     * BUILD_TRACKER.md's notes). Two transitions in one call — CONFIRMED
+     * -> MERCHANT_ACCEPTED -> PREPARING — the same reasoning as Stage 3's
+     * own merchant.approve(): there's no genuinely separate signal for "a
+     * merchant clicked accept" versus "the merchant started preparing," so
+     * collapsing them avoids a redundant second click for information
+     * nobody outside this service needs to know arrived separately.
+     */
+    public void acceptedByMerchant(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.CONFIRMED) {
+            return;
+        }
+        order.transitionTo(OrderStatus.MERCHANT_ACCEPTED);
+        order.transitionTo(OrderStatus.PREPARING);
+        orderRepository.save(order);
+    }
+
+    /** A merchant rejection after payment succeeded needs the same compensating actions as a customer cancel — release the reservation, refund via the same order.cancelled -> payment-service path (§8's REST-vs-Kafka rule still applies: order-service doesn't need the refund's result to decide anything next). */
+    public void rejectedByMerchant(UUID orderId, String reason) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.CONFIRMED) {
+            return;
+        }
+        order.transitionTo(OrderStatus.MERCHANT_REJECTED);
+        order.setCancellationReason(reason);
+        Order saved = orderRepository.save(order);
+
+        inventoryClient.release(orderId);
+        eventPublisher.publishCancelled(saved.getId(), saved.getUserId(), saved.getTotalAmount());
+    }
+
+    /** From merchant-service's order.ready event — the merchant has finished preparing. delivery-service consumes the same event directly off order-events to trigger assignment; this just keeps order-service's own canonical status current. */
+    public void markReadyForPickup(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PREPARING) {
+            return;
+        }
+        order.transitionTo(OrderStatus.READY_FOR_PICKUP);
+        orderRepository.save(order);
+    }
+
+    /** From delivery-service's delivery.assigned event. */
+    public void assignedToDelivery(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.READY_FOR_PICKUP) {
+            return;
+        }
+        order.transitionTo(OrderStatus.DELIVERY_ASSIGNED);
+        orderRepository.save(order);
+    }
+
+    /**
+     * From delivery-service's delivery.delivered event. Two transitions in
+     * one call — DELIVERY_ASSIGNED -> OUT_FOR_DELIVERY -> DELIVERED — same
+     * double-hop reasoning as acceptedByMerchant: BUILD_TRACKER's Stage 11
+     * scope only asks for delivery.assigned/delivery.delivered, with no
+     * separate "picked up, now en route" signal to react to individually.
+     */
+    public void delivered(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.DELIVERY_ASSIGNED) {
+            return;
+        }
+        order.transitionTo(OrderStatus.OUT_FOR_DELIVERY);
+        order.transitionTo(OrderStatus.DELIVERED);
+        orderRepository.save(order);
     }
 
     public Order getById(UUID orderId, UUID userId) {
