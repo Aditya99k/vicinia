@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 13 (review) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 14 (settlement) — see `docs/BUILD_TRACKER.md` for current progress.

@@ -1,0 +1,74 @@
+server:
+  port: 8093
+
+spring:
+  application:
+    name: settlement-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/settlement_db
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      # Deliberately earliest, for a stronger reason than usual: this is a
+      # financial ledger (ARCHITECTURE.md §6 — "must be exact and
+      # auditable"). Every other "earliest" choice in this project has been
+      # about backfill convenience; here, "latest" would mean a consumer
+      # group reset (or this service's very first boot after some
+      # order.delivered events already happened) silently drops real
+      # commission owed to a merchant forever. That's a correctness bug
+      # for a ledger, not an acceptable trade the way a stale notification
+      # or a stale delivery-assignment retry would be.
+      group-id: settlement-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.settlementservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.settlementservice.messaging.IncomingEventEnvelope
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+vicinia:
+  settlement:
+    # 5% platform commission (ARCHITECTURE.md §4.7's own worked example:
+    # ₹500 gross -> ₹25 commission -> ₹475 net).
+    commission-rate: 0.05
+    # "e.g. daily" per ARCHITECTURE.md §4.7 — real cadence for the automatic
+    # scheduled run. An admin can also trigger a batch run on demand via
+    # POST /api/settlements/admin/payouts/run-batch, which is what this
+    # project's own testing uses rather than waiting a day.
+    payout-batch-interval-ms: 86400000
+    # How often the simulated processor ticks, advancing PENDING->PROCESSING
+    # and PROCESSING->PAID payouts. Short by design — same reasoning as
+    # delivery-service's AssignmentReaper: this is the automatic safety net,
+    # not the only way to advance state (see the /run-processor admin
+    # endpoint for on-demand ticks).
+    payout-processor-interval-ms: 30000
+    # How long a Payout sits in PROCESSING before the simulated "bank
+    # transfer" is considered cleared and it moves to PAID — long enough
+    # that PROCESSING is genuinely observable as its own real state, not a
+    # value that flips to PAID on the very next tick.
+    payout-processing-delay-ms: 60000

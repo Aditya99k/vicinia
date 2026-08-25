@@ -50,6 +50,7 @@ SERVICES=(
   "delivery-service:delivery-service:8090"
   "notification-service:notification-service:8091"
   "review-service:review-service:8092"
+  "settlement-service:settlement-service:8093"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────

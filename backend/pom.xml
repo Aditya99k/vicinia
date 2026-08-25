@@ -51,6 +51,7 @@
         <module>delivery-service</module>
         <module>notification-service</module>
         <module>review-service</module>
+        <module>settlement-service</module>
     </modules>
 
     <dependencyManagement>

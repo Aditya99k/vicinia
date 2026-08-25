@@ -212,7 +212,8 @@ public class OrderService {
         }
         order.transitionTo(OrderStatus.OUT_FOR_DELIVERY);
         order.transitionTo(OrderStatus.DELIVERED);
-        orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        eventPublisher.publishDelivered(saved.getId(), saved.getMerchantId(), saved.getTotalAmount());
     }
 
     public Order getById(UUID orderId, UUID userId) {

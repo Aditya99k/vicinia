@@ -49,6 +49,12 @@ public class OrderEventPublisher {
         kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("order.cancelled", payload));
     }
 
+    /** settlement-service's trigger (Stage 14, ARCHITECTURE.md §8 — fired on DELIVERED specifically, not CONFIRMED, so a cancellation/refund between confirm and delivery never has to claw back a settlement already created). */
+    public void publishDelivered(UUID orderId, UUID merchantId, BigDecimal totalAmount) {
+        var payload = new OrderDeliveredPayload(orderId.toString(), merchantId.toString(), totalAmount.toString());
+        kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("order.delivered", payload));
+    }
+
     public record OrderUserPayload(String orderId, String userId) {
     }
 
@@ -56,5 +62,8 @@ public class OrderEventPublisher {
     }
 
     public record OrderCancelledPayload(String orderId, String userId, String totalAmount) {
+    }
+
+    public record OrderDeliveredPayload(String orderId, String merchantId, String totalAmount) {
     }
 }

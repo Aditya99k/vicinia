@@ -28,7 +28,7 @@ public class RoleSeeder implements CommandLineRunner {
             "MERCHANT", List.of("STORE_MANAGE", "LISTING_MANAGE", "ORDER_FULFILL", "PROFILE_MANAGE"),
             "DELIVERY_PARTNER", List.of("DELIVERY_MANAGE", "PROFILE_MANAGE"),
             "ADMIN", List.of("MERCHANT_APPROVE", "USER_MANAGE", "COUPON_MANAGE", "CATALOG_MANAGE",
-                    "ORDER_VIEW_ALL", "PAYMENT_VIEW", "REFUND_INITIATE")
+                    "ORDER_VIEW_ALL", "PAYMENT_VIEW", "REFUND_INITIATE", "SETTLEMENT_MANAGE")
     );
 
     private final RoleRepository roleRepository;
