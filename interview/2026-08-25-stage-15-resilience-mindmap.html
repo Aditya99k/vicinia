@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 5 Build Map (Resilience)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF1F6; --surface: #FFFFFF; --ink: #172233; --muted: #58687F; --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+    --accent: #C6912E; --accent-ink: #241804; --accent-soft: rgba(198,145,46,0.14);
+    --wire-build: #6C87A8; --wire-deep: #B0765A;
+    --wash-build: rgba(62,124,166,0.05); --wash-deep: rgba(181,101,58,0.06);
+    --tag-build: #3E7CA6; --tag-deep: #B5653A;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --wire-build: #6E8FBD; --wire-deep: #C6835F;
+      --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+      --tag-build: #85AFDD; --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper); color: var(--ink); font-family: var(--font-serif); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .titleblock { max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: block; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 50ch; margin-top: 10px; }
+  .stamp { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface); }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root { position: relative; width: 168px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono); }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .branch-toggle .tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600; padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+
+  .legend { max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 5 Build Map — Resilience</h1>
+    <p class="sub">Stage 15: not just wiring in resilience4j and calling it done — a real circuit tripped, retried, recovered, and rate-limited against the live JVM, with a genuine config bug found along the way.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 15</span>
+    <span class="k">Date</span><span class="v">2026-08-25</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 5 resilience root node to a Build Log branch and a Deep Dives branch about Stage 15 resilience hardening."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Resilience</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <div class="leaf-group build">
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">Two libraries, on purpose</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p><code>@Retryable</code> (Spring Retry — already a dependency since Stage 10's Kafka <code>@RetryableTopic</code>) handles the two idempotent-only retries: <code>InventoryClient.reserve()</code> and <code>PaymentClient.payWithWallet()</code>, scoped to genuine transient failures only, never the 402/409 business rejections those methods already handle. <code>resilience4j-spring-boot3</code> (a new dependency) handles <code>@CircuitBreaker</code> + <code>@Bulkhead</code> on <code>createRazorpayOrder()</code> alone — deliberately not retried, since minting a second Razorpay order isn't an idempotent operation to retry blindly.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">A config-precedence bug, found by the actuator endpoint going missing</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <p>Widened order-service's own <code>management.endpoints.web.exposure.include</code> to add <code>circuitbreakers</code>/<code>circuitbreakerevents</code> — and it silently didn't take effect. Config Server's shared <code>application.yml</code> sets the same key, and a remote property source imported via <code>spring.config.import</code> takes precedence over the importing service's own local file. Fixed with <code>config-repo/order-service.yml</code> — the first per-service override this project has actually needed, exactly the mechanism the shared file's own top comment predicted years of stages ago.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">The full circuit lifecycle, watched live</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>Pointed <code>RazorpayClient</code>'s hardcoded URL at an unreachable host, rebuilt and restarted <em>only</em> payment-service — the wallet path stayed genuinely untouched, isolating "Razorpay is degraded" from "payment-service is down," the real-world scenario this pattern exists for.</li>
+              <li>Repeated Razorpay checkouts drove <code>/actuator/circuitbreakers</code> from <code>CLOSED</code> to <code>OPEN</code> once the failure-rate threshold crossed — <code>notPermittedCalls</code> climbing as later calls were rejected without even attempting the network call.</li>
+              <li>Watched it auto-transition to <code>HALF_OPEN</code> after the wait duration, reopen when trial calls still failed (URL still broken), then — after reverting the URL — close back to <code>CLOSED</code> on 3 successful trial calls.</li>
+              <li>Every state in the machine, confirmed against the real running JVM, not inferred from the annotation being present.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">Wallet checkout, measured while Razorpay was on fire</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <p>While the razorpay circuit sat open, a wallet order with sufficient balance completed in 0.25s at <code>CONFIRMED</code> — completely unaffected. Razorpay-path attempts during the same window failed in well under 0.1s each, a clean 503 via the new <code>PaymentGatewayUnavailableException</code>. This is the actual claim BUILD_TRACKER.md's "done when" makes — not "the annotation compiles," but "wallet-only customers never notice."</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">kill vs kill -9 — the retry test that failed twice before it worked</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>Killing the tracked PID (the <code>mvn spring-boot:run</code> wrapper, not its child JVM) left the real java process running — the "outage" wasn't real. Killing the wrapper with a graceful signal deregistered the instance from Eureka correctly, but produced <code>IllegalArgumentException: Service Instance cannot be null</code> — a load-balancer-level failure, correctly not retried (no instance exists to retry against). <code>kill -9</code> on the actual child JVM PID finally produced the real scenario: Eureka still reporting the instance <code>UP</code> while its port is genuinely dead. That request took 1.68s — matching 3 attempts across the configured 500ms/1000ms backoff — before failing with <code>ResourceAccessException: ... Connection refused</code>, the exact retryable type, confirmed in the logs.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c6">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c6" aria-expanded="false">
+            <span class="tag">06</span>
+            <span class="title">Rate limiting: sequential requests lie, concurrent ones don't</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c6"><div class="detail-inner"><div class="detail">
+            <p>60 sequential curl calls all returned 200 — the token bucket (20/s replenish) simply refilled between each one, never actually running dry. 80 truly concurrent requests (<code>xargs -P 40</code>) told the real story: 60×200, 20×429, matching the configured burst-plus-replenish math exactly. A different user's request succeeded immediately while the first user's bucket sat exhausted, confirming per-user isolation; the same burst against a public, unauthenticated endpoint produced a clean 40×200/40×429 split — the IP-based fallback for paths with no <code>X-User-Id</code> yet.</p>
+          </div></div></div>
+        </article>
+      </div>
+
+      <div class="leaf-group deep">
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">testing</span>
+            <span class="title">Why not just trust the annotations compiled correctly?</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Resilience4j and Spring Retry are well-established libraries — wouldn't a correct annotation with correct config just work, without needing to actually crash three services to prove it?</dt><dd class="a">The libraries themselves are trustworthy; the question this stage actually needs answered is whether *this specific application's wiring* of them is correct — and that's exactly where the real bugs in this session showed up, none of which were library defects. The actuator endpoint silently missing wasn't resilience4j's fault, it was Config Server's precedence rules. The first two retry tests silently not firing weren't Spring Retry's fault, they were about which PID actually got killed and what exception type Eureka's load-balancer throws when an instance disappears entirely versus when it just stops responding. None of those are things a code review of the annotations would have caught — they only showed up by actually triggering the failure and watching what happened, the same lesson Stage 10's DLQ testing already taught this project once.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">design</span>
+            <span class="title">Why leave the PAYMENT_PENDING gap unfixed instead of just fixing it?</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Since a failed Razorpay call was already being deliberately triggered to test the circuit breaker, and it was already known that the order gets stuck with inventory still reserved — why not just add the cleanup while already in that code?</dt><dd class="a">Because fixing it well requires a real design decision this stage isn't the place to make casually: should a failed Razorpay-order-creation auto-release the reservation and mark the order failed immediately, or should the customer be allowed to retry Razorpay specifically since the reservation is still valid and there's no reason to force them back through checkout entirely? Those are different UX and correctness tradeoffs, and picking one under time pressure while verifying an unrelated stage would be exactly the kind of undersized, unreviewed fix that creates a second problem while solving the first. Stage 15's job was proving the resilience patterns work — noting the gap precisely, with the evidence that surfaced it, is what lets a future stage make that design decision properly instead of inheriting an undocumented one.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">architecture</span>
+            <span class="title">Why a semaphore bulkhead instead of a real thread pool?</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">"Isolated from internal-service calls" sounds like it should mean a genuinely separate thread pool for Razorpay calls — why does the actual implementation use a semaphore that still runs on the caller's own thread?</dt><dd class="a">A thread-pool bulkhead is the more literal reading, but it requires the annotated method to return <code>CompletableFuture</code>, reshaping <code>createRazorpayOrder</code>'s calling contract and adding real complexity (executor sizing, async error propagation) for a synchronous checkout flow that just needs the result before continuing. A semaphore bulkhead achieves the concern that actually matters here — capping how many of Tomcat's own request threads can be simultaneously blocked inside a slow Razorpay call — without changing the method's shape at all: past the configured limit, calls fail fast with a clear error instead of queuing or blocking further, which is the behavior that protects the pool wallet-only checkout depends on. The literal "separate thread pool" reading isn't wrong, it's just solving a problem — moving execution off the request thread entirely — that this specific call site, being synchronous end to end, doesn't actually have.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'], ['hub-build', 'c6', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawConnectors); }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
