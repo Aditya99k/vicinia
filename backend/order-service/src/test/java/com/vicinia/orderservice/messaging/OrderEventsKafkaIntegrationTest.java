@@ -45,10 +45,21 @@ import static org.awaitility.Awaitility.await;
  * this same pattern across every one of the 9 Kafka-consuming services.
  * order-service is the richest candidate: it both publishes (order.
  * confirmed) and consumes (payment-events, for the Razorpay path).
+ *
+ * <p>The 3 tests share one Spring context — one {@code payment-events}
+ * consumer group, one listener — so they aren't isolated from each other:
+ * the malformed-message test's poison record needs its full 4-attempt,
+ * ~14s exponential backoff (2s/4s/8s) before landing on the DLT, which
+ * blocks that topic-partition's consumer the whole time. Explicit
+ * ordering keeps it running last, after the redelivery test's own
+ * message has already been consumed — found the hard way in CI, where
+ * default (effectively unordered) method execution let the malformed
+ * message go first and starved the redelivery test past its timeout.
  */
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
+@org.junit.jupiter.api.TestMethodOrder(org.junit.jupiter.api.MethodOrderer.OrderAnnotation.class)
 class OrderEventsKafkaIntegrationTest {
 
     @Container
@@ -105,6 +116,7 @@ class OrderEventsKafkaIntegrationTest {
     // --- 1. Producer shape -------------------------------------------------
 
     @Test
+    @org.junit.jupiter.api.Order(1)
     void publishConfirmed_putsARealOrderConfirmedEnvelopeOnOrderEvents() throws Exception {
         rawStringConsumer.subscribe(java.util.List.of("order-events"));
         UUID orderId = UUID.randomUUID();
@@ -126,6 +138,7 @@ class OrderEventsKafkaIntegrationTest {
     // --- 2. Idempotent consumer ---------------------------------------------
 
     @Test
+    @org.junit.jupiter.api.Order(2)
     void redeliveredPaymentSuccessEvent_confirmsTheOrderExactlyOnce() {
         Order order = confirmedOrder();
         String payload = String.format(
@@ -137,7 +150,7 @@ class OrderEventsKafkaIntegrationTest {
         rawStringProducer.send(new ProducerRecord<>("payment-events", order.getId().toString(), payload));
         rawStringProducer.send(new ProducerRecord<>("payment-events", order.getId().toString(), payload)); // redelivery
 
-        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             Order reloaded = orderRepository.findById(order.getId()).orElseThrow();
             assertThat(reloaded.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         });
@@ -149,6 +162,7 @@ class OrderEventsKafkaIntegrationTest {
     // --- 3. DLQ path ---------------------------------------------------------
 
     @Test
+    @org.junit.jupiter.api.Order(3)
     void aMalformedPaymentEvent_landsOnTheServiceQualifiedDlt() {
         rawStringConsumer.subscribe(java.util.List.of("payment-events-order-service-dlt"));
         String malformed = "{\"eventId\":\"bad-1\",\"eventType\":\"payment.success\",\"schemaVersion\":1," +

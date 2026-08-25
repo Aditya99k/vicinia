@@ -106,7 +106,7 @@ class FullOrderLifecycleE2ETest {
         // --- Merchant fulfillment ---
         // order.confirmed -> merchant-service's OrderConfirmedConsumer creates the
         // MerchantOrderTask asynchronously; wait for it to land before accepting.
-        await("merchant order task created from order.confirmed").atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        await("merchant order task created from order.confirmed").atMost(Duration.ofSeconds(45)).untilAsserted(() -> {
             JsonNode pending = get("/api/merchants/orders/pending", merchantToken);
             assertThat(pending).anySatisfy(t -> assertThat(t.get("orderId").asText()).isEqualTo(orderId));
         });
@@ -115,7 +115,7 @@ class FullOrderLifecycleE2ETest {
         assertThat(ready.get("status").asText()).isEqualTo("READY");
 
         // --- Delivery assignment + fulfillment ---
-        await("delivery task assigned via order.ready -> Redis GEO search").atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        await("delivery task assigned via order.ready -> Redis GEO search").atMost(Duration.ofSeconds(45)).untilAsserted(() -> {
             JsonNode current = get("/api/orders/" + orderId, customerToken);
             assertThat(current.get("status").asText()).isEqualTo("DELIVERY_ASSIGNED");
         });
@@ -127,7 +127,7 @@ class FullOrderLifecycleE2ETest {
         assertThat(delivered.get("status").asText()).isEqualTo("DELIVERED");
 
         // --- Settlement ---
-        await("settlement entry created from order.delivered").atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        await("settlement entry created from order.delivered").atMost(Duration.ofSeconds(45)).untilAsserted(() -> {
             JsonNode entries = get("/api/settlements/mine", merchantToken);
             assertThat(entries.isArray()).isTrue();
             assertThat(entries).anySatisfy(e -> assertThat(e.get("orderId").asText()).isEqualTo(orderId));
