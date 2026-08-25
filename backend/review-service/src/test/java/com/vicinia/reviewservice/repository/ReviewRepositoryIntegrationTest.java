@@ -10,6 +10,8 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -21,6 +23,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * translates to ReviewAlreadyExistsException — the actual race-safety net
  * behind the pre-check, proven here directly against a real Mongo engine
  * rather than assumed from Stage 13's live curl test alone.
+ *
+ * <p>Every (userId, productId) pair below is unique per test method — found
+ * in CI that Mongo (unlike @DataJpaTest's Postgres, rolled back per test)
+ * doesn't get any transactional rollback here, so documents persist across
+ * test methods within the same class run; 4 tests all hardcoding
+ * "user-1"/"product-1" meant whichever ran after another had already
+ * inserted that pair hit a real DuplicateKeyException on its own unrelated
+ * first save, regardless of execution order.
  */
 @DataMongoTest
 @Testcontainers
@@ -35,8 +45,8 @@ class ReviewRepositoryIntegrationTest {
 
     @Test
     void aSecondReviewFromTheSameUserForTheSameProduct_violatesTheCompoundUniqueIndex() {
-        String userId = "user-1";
-        String productId = "product-1";
+        String userId = "user-" + UUID.randomUUID();
+        String productId = "product-" + UUID.randomUUID();
         reviewRepository.save(new Review(userId, productId, 5, "Great!"));
 
         assertThatThrownBy(() -> reviewRepository.save(new Review(userId, productId, 3, "Changed my mind")))
@@ -45,26 +55,29 @@ class ReviewRepositoryIntegrationTest {
 
     @Test
     void theSameUserCanReviewTwoDifferentProducts() {
-        String userId = "user-1";
-        reviewRepository.save(new Review(userId, "product-1", 5, "Great!"));
+        String userId = "user-" + UUID.randomUUID();
+        reviewRepository.save(new Review(userId, "product-" + UUID.randomUUID(), 5, "Great!"));
 
-        assertThatCodeDoesNotThrow(() -> reviewRepository.save(new Review(userId, "product-2", 4, "Also good")));
+        assertThatCodeDoesNotThrow(() -> reviewRepository.save(new Review(userId, "product-" + UUID.randomUUID(), 4, "Also good")));
     }
 
     @Test
     void twoDifferentUsersCanReviewTheSameProduct() {
-        String productId = "product-1";
-        reviewRepository.save(new Review("user-1", productId, 5, "Great!"));
+        String productId = "product-" + UUID.randomUUID();
+        reviewRepository.save(new Review("user-" + UUID.randomUUID(), productId, 5, "Great!"));
 
-        assertThatCodeDoesNotThrow(() -> reviewRepository.save(new Review("user-2", productId, 2, "Not for me")));
+        assertThatCodeDoesNotThrow(() -> reviewRepository.save(new Review("user-" + UUID.randomUUID(), productId, 2, "Not for me")));
     }
 
     @Test
     void existsByUserIdAndProductId_findsAnExistingReview() {
-        reviewRepository.save(new Review("user-1", "product-1", 5, "Great!"));
+        String userId = "user-" + UUID.randomUUID();
+        String productId = "product-" + UUID.randomUUID();
+        String otherProductId = "product-" + UUID.randomUUID();
+        reviewRepository.save(new Review(userId, productId, 5, "Great!"));
 
-        assertThat(reviewRepository.existsByUserIdAndProductId("user-1", "product-1")).isTrue();
-        assertThat(reviewRepository.existsByUserIdAndProductId("user-1", "product-2")).isFalse();
+        assertThat(reviewRepository.existsByUserIdAndProductId(userId, productId)).isTrue();
+        assertThat(reviewRepository.existsByUserIdAndProductId(userId, otherProductId)).isFalse();
     }
 
     private static void assertThatCodeDoesNotThrow(Runnable action) {
