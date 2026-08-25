@@ -5,6 +5,7 @@ import com.vicinia.orderservice.exception.EmptyCartException;
 import com.vicinia.orderservice.exception.ForbiddenException;
 import com.vicinia.orderservice.exception.IllegalOrderStatusTransitionException;
 import com.vicinia.orderservice.exception.OrderNotFoundException;
+import com.vicinia.orderservice.exception.PaymentGatewayUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -41,6 +42,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalOrderStatusTransitionException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalTransition(RuntimeException e) {
         return body(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(PaymentGatewayUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handlePaymentGatewayUnavailable(RuntimeException e) {
+        return body(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

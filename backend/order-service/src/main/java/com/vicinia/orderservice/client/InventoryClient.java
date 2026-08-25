@@ -1,7 +1,11 @@
 package com.vicinia.orderservice.client;
 
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -23,7 +27,21 @@ public class InventoryClient {
         this.restTemplate = restTemplate;
     }
 
-    /** Returns false on 409 (insufficient stock) — inventory-service has already rolled back any partial reservation from this same call internally (Stage 5). Any other error propagates. */
+    /**
+     * Returns false on 409 (insufficient stock) — inventory-service has
+     * already rolled back any partial reservation from this same call
+     * internally (Stage 5). Any other error propagates.
+     *
+     * <p>@Retryable (Stage 15, ARCHITECTURE.md §12) only on genuinely
+     * transient failures — a connection issue (ResourceAccessException) or
+     * a 5xx from inventory-service itself — never on the 409 handled above,
+     * which is a real, correct business answer, not a blip. Safe to retry
+     * because reservation is idempotent on (orderId, productId) per §11: a
+     * retry after a response that actually succeeded server-side is a
+     * no-op, not a double-reservation.
+     */
+    @Retryable(retryFor = {ResourceAccessException.class, HttpServerErrorException.class},
+            maxAttempts = 3, backoff = @Backoff(delay = 500, multiplier = 2.0))
     public boolean reserve(UUID orderId, List<ReserveItem> items) {
         try {
             restTemplate.postForEntity(

@@ -64,6 +64,27 @@
         </dependency>
 
         <dependency>
+            <!-- Resilience4j's own Spring Boot 3 starter (ARCHITECTURE.md §12,
+                 Stage 15) — annotation-based @CircuitBreaker/@Bulkhead, not
+                 Spring Cloud Circuit Breaker's programmatic CircuitBreakerFactory
+                 API. Not managed by spring-cloud-dependencies (a different
+                 project from Spring Cloud), so its version is pinned here. -->
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <!-- Retry (idempotent-only) uses Spring Retry's own @Retryable,
+                 already a transitive need of this service's spring-kafka
+                 @RetryableTopic usage (Stage 10) — reused directly rather than
+                 also pulling in resilience4j's separate retry module for the
+                 same underlying capability. Both @Retryable and resilience4j's
+                 annotations need AOP proxying to intercept the method call. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>

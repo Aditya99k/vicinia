@@ -1,0 +1,12 @@
+# Per-service override (see application.yml's own top-of-file comment) —
+# the first one this project has actually needed. order-service's local
+# application.yml sets management.endpoints.web.exposure.include to also
+# cover circuitbreakers/circuitbreakerevents (Stage 15), but Config
+# Server's remote application.yml takes precedence over a service's own
+# local file once spring.config.import pulls it in, so the wider list has
+# to be layered in here instead to actually take effect.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,circuitbreakerevents

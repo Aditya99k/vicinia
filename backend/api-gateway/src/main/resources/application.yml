@@ -15,6 +15,23 @@ spring:
       discovery:
         locator:
           enabled: false
+      # Per-user (or per-IP, pre-auth) token bucket, applied to every route
+      # (Stage 15, ARCHITECTURE.md §12) — a default-filter, not attached to
+      # individual routes one at a time, since abuse protection should
+      # cover the whole surface by default rather than needing to be
+      # remembered on each new route as services get added. Backed by
+      # Spring Cloud Gateway's built-in RedisRateLimiter (auto-configured
+      # from the existing spring-boot-starter-data-redis dependency — no
+      # new dependency needed) and RateLimiterConfig's userKeyResolver
+      # bean. 20 req/s sustained, bursting to 40 — generous for normal
+      # browsing/checkout traffic, low enough to blunt scripted abuse.
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 20
+            redis-rate-limiter.burstCapacity: 40
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@userKeyResolver}"
       # Local dev only — lets frontend/customer-app (Vite on :5173) call the
       # gateway from the browser. A real deployment locks this down to the
       # actual frontend origin (Cloudflare Pages URL), per DEPLOYMENT.md.

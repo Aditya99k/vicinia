@@ -44,7 +44,41 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # circuitbreakers/circuitbreakerevents added for Stage 15 — the
+        # only way to observe the razorpay circuit's actual state
+        # (CLOSED/OPEN/HALF_OPEN) and event history from outside the JVM,
+        # used directly during this stage's own verification.
+        include: health,info,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: always
+
+# Resilience4j (Stage 15, ARCHITECTURE.md §12) — scoped to the "razorpay"
+# instance only, matching the checklist's own scoping: "Circuit breaker:
+# order-service -> payment-service (Razorpay path)" specifically, not
+# every outbound call. payWithWallet/reserve get @Retryable (Spring
+# Retry, configured inline via annotation attributes) instead — see
+# InventoryClient/PaymentClient's own comments for why retry and
+# circuit-breaker+bulkhead were split across the two different libraries
+# already present in this project rather than picking one for everything.
+resilience4j:
+  circuitbreaker:
+    instances:
+      razorpay:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+  bulkhead:
+    instances:
+      razorpay:
+        # Semaphore (default type), not thread-pool — see PaymentClient's
+        # comment. Fails fast (0 wait) rather than queuing once full, since
+        # queuing would just delay the same thread-starvation risk instead
+        # of preventing it.
+        max-concurrent-calls: 10
+        max-wait-duration: 0
