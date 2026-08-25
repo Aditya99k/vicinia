@@ -16,6 +16,8 @@ import com.vicinia.inventoryservice.messaging.InventoryEventPublisher;
 import com.vicinia.inventoryservice.repository.KnownProductRepository;
 import com.vicinia.inventoryservice.repository.MerchantListingRepository;
 import com.vicinia.inventoryservice.repository.ReservationRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,18 +39,29 @@ public class InventoryService {
     private final InventoryEventPublisher eventPublisher;
     private final int lowStockThreshold;
 
+    private final Counter oversellCounter;
+
     public InventoryService(MerchantListingRepository listingRepository,
                              ReservationRepository reservationRepository,
                              KnownProductRepository knownProductRepository,
                              CatalogClient catalogClient,
                              InventoryEventPublisher eventPublisher,
-                             @Value("${vicinia.inventory.low-stock-threshold:5}") int lowStockThreshold) {
+                             @Value("${vicinia.inventory.low-stock-threshold:5}") int lowStockThreshold,
+                             MeterRegistry meterRegistry) {
         this.listingRepository = listingRepository;
         this.reservationRepository = reservationRepository;
         this.knownProductRepository = knownProductRepository;
         this.catalogClient = catalogClient;
         this.eventPublisher = eventPublisher;
         this.lowStockThreshold = lowStockThreshold;
+        // Registered eagerly, not lazily on first increment (Micrometer's
+        // default via meterRegistry.counter(...).increment()) — a canary
+        // that's supposed to read "always zero" needs to actually report 0
+        // from boot, not simply be absent from /actuator/prometheus until
+        // the bug it's watching for happens once.
+        this.oversellCounter = Counter.builder("inventory.oversell")
+                .description("Reservations that left available_stock negative — should never increment; a nonzero reading means the oversell guard (ADR §4.4) has broken")
+                .register(meterRegistry);
     }
 
     // --- listings ---
@@ -171,6 +184,18 @@ public class InventoryService {
         String productId = listing.getProductId();
         UUID merchantId = listing.getMerchantId();
         int availableStock = listing.getAvailableStock();
+
+        // Stage 16's inventory-oversell canary (ARCHITECTURE.md §15) — this
+        // should be structurally impossible, since tryReserve's own atomic
+        // conditional UPDATE (WHERE available_stock >= quantity) is what
+        // ADR/§4.4 relies on to prevent oversell in the first place. A
+        // non-zero reading here means that guarantee has actually broken,
+        // not just that stock ran low — that's why this dashboard's "should
+        // always be zero" framing matters: any nonzero count is a real bug,
+        // not a routine business event like inventory.low/out below.
+        if (availableStock < 0) {
+            oversellCounter.increment();
+        }
 
         if (availableStock == 0) {
             afterCommit(() -> eventPublisher.publishOut(productId, merchantId, listingId));

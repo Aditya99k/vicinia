@@ -34,6 +34,10 @@ spring:
         # classes on their classpath, so type info in the payload would be
         # useless to them — each consumer deserializes generically instead.
         spring.json.add.type.headers: false
+        # Stage 16: copies the current request's correlation ID (MDC) onto
+        # every outgoing record as a real Kafka header -- no publisher code
+        # changes needed anywhere.
+        interceptor.classes: com.vicinia.common.observability.CorrelationIdProducerInterceptor
 
 management:
   endpoints:

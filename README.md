@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 15 (resilience hardening) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 16 (observability) — see `docs/BUILD_TRACKER.md` for current progress.

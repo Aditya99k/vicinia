@@ -1,0 +1,16 @@
+# Dashboards-as-code — checked into git so the 5 Stage 16 dashboards
+# (ARCHITECTURE.md §15) exist automatically on every fresh stack start,
+# rather than needing to be clicked together by hand in the Grafana UI
+# each time the container is recreated.
+apiVersion: 1
+
+providers:
+  - name: vicinia
+    orgId: 1
+    folder: Vicinia
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: false

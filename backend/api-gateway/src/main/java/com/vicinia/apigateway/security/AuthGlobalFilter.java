@@ -57,7 +57,11 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        // Runs just after CorrelationIdGlobalFilter (Stage 16), which needs
+        // to be the very first thing that touches every request so even a
+        // 401 rejected here still carries a real correlation ID in its own
+        // response and in this filter's log line.
+        return Ordered.HIGHEST_PRECEDENCE + 1;
     }
 
     @Override

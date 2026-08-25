@@ -24,6 +24,10 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+        # Stage 16: copies the current request's correlation ID (MDC) onto
+        # every outgoing record as a real Kafka header -- no publisher code
+        # changes needed anywhere.
+        interceptor.classes: com.vicinia.common.observability.CorrelationIdProducerInterceptor
 
 management:
   endpoints:

@@ -48,5 +48,28 @@
             <artifactId>jjwt-jackson</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <dependency>
+            <!-- Stage 16: every service that depends on common gets a
+                 /actuator/prometheus endpoint for free the moment it also
+                 has spring-boot-starter-actuator (which all of them
+                 already do) — one dependency here instead of touching 14
+                 services' own poms individually. -->
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Needed for CorrelationIdRecordInterceptor's Spring Kafka
+                 types (RecordInterceptor, ContainerCustomizer). Pulls
+                 kafka-clients (needed for CorrelationIdProducerInterceptor
+                 too) transitively. review-service is the one
+                 common-dependent service with no Kafka usage of its own —
+                 an unused transitive dependency there is a small,
+                 acceptable cost against duplicating both interceptor
+                 classes into every one of the 13 services that do use
+                 Kafka. -->
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
     </dependencies>
 </project>

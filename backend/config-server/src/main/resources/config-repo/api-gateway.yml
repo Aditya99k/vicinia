@@ -1,0 +1,15 @@
+# Per-service override (see application.yml's own top comment, and
+# order-service.yml for the precedent this follows). api-gateway's own
+# local application.yml has set management.endpoints.web.exposure.include
+# to health,info,gateway since Stage 1 — but Config Server's remote
+# application.yml silently wins over a service's own local file once
+# spring.config.import pulls it in (the exact bug found and fixed for
+# order-service in Stage 15), so the gateway actuator endpoint has likely
+# been unavailable this whole time without anyone noticing, since nothing
+# depended on it. Restored here, with prometheus added alongside it
+# (Stage 16).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,prometheus

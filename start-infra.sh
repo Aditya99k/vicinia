@@ -165,6 +165,7 @@ wait_for_container_health vicinia-postgres 60 || exit 1
 wait_for_container_health vicinia-redis 60 || exit 1
 wait_for_container_health vicinia-redpanda 60 || exit 1
 wait_for_container_health vicinia-mongo 60 || exit 1
+wait_for_container_health vicinia-prometheus 60 || exit 1
 
 # ── 4. Build ────────────────────────────────────────────────────────
 section "Build (mvn install — ensures every service builds against common's latest code)"
@@ -270,6 +271,8 @@ printf "  ${BOLD}%-18s${RESET} %s\n" "redis" "localhost:6379"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redis-commander" "http://localhost:9191"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redpanda" "localhost:9092"
 printf "  ${BOLD}%-18s${RESET} %s\n" "redpanda-console" "http://localhost:9093"
+printf "  ${BOLD}%-18s${RESET} %s\n" "prometheus" "http://localhost:9090"
+printf "  ${BOLD}%-18s${RESET} %s\n" "grafana" "http://localhost:3000  (admin/admin)"
 echo
 printf "  ${DIM}Logs:  ./logs/*.log${RESET}\n"
 printf "  ${DIM}Stop:  ./stop-infra.sh${RESET}\n\n"

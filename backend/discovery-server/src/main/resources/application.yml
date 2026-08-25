@@ -21,7 +21,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Doesn't import from config-server (chicken-and-egg — this IS the
+# registry config-server itself registers with), so the shared logging
+# pattern override lives here too, duplicated rather than imported.
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{correlationId:-}]"

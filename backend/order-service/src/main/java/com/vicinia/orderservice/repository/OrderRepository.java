@@ -4,6 +4,7 @@ import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.domain.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,4 +13,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     /** review-service's eligibility check (Stage 13): has this user received a delivered order containing this product. */
     boolean existsByUserIdAndStatusAndItems_ProductId(UUID userId, OrderStatus status, String productId);
+
+    /** Stage 16's "stale READY_FOR_PICKUP orders" gauge (ARCHITECTURE.md §15) — updatedAt is the last transition time, so this counts orders that have sat waiting for a delivery partner longer than the configured threshold. */
+    long countByStatusAndUpdatedAtBefore(OrderStatus status, Instant cutoff);
 }

@@ -23,6 +23,10 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.add.type.headers: false
+        # Stage 16: copies the current request's correlation ID (MDC) onto
+        # every outgoing record as a real Kafka header -- no publisher code
+        # changes needed anywhere.
+        interceptor.classes: com.vicinia.common.observability.CorrelationIdProducerInterceptor
     consumer:
       # Stage 9's first order-service consumer: payment-events, for the
       # Razorpay path specifically (wallet stays synchronous, unaffected —
@@ -82,3 +86,10 @@ resilience4j:
         # of preventing it.
         max-concurrent-calls: 10
         max-wait-duration: 0
+
+vicinia:
+  observability:
+    # Stage 16's "stale READY_FOR_PICKUP orders" gauge (ARCHITECTURE.md
+    # §15) — how long an order can sit waiting for a delivery partner
+    # before it counts as stale on the dashboard.
+    stale-ready-for-pickup-minutes: 15

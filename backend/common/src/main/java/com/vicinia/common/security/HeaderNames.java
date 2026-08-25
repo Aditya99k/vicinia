@@ -15,4 +15,6 @@ public final class HeaderNames {
     public static final String USER_EMAIL = "X-User-Email";
     public static final String USER_ROLES = "X-User-Roles";
     public static final String USER_PERMISSIONS = "X-User-Permissions";
+    /** Generated at api-gateway if absent (Stage 16, ARCHITECTURE.md §15), carried through every internal call and into Kafka record headers so one request's trail is traceable across every service and topic it touches. */
+    public static final String CORRELATION_ID = "X-Correlation-Id";
 }

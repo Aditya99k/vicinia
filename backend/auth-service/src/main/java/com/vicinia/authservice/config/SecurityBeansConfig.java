@@ -1,6 +1,7 @@
 package com.vicinia.authservice.config;
 
 import com.vicinia.common.jwt.JwtTokenProvider;
+import com.vicinia.common.security.CorrelationIdFilter;
 import com.vicinia.common.security.InternalRequestFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -35,6 +36,16 @@ public class SecurityBeansConfig {
         registration.setFilter(new InternalRequestFilter(secret));
         registration.addUrlPatterns("/*");
         registration.setOrder(1);
+        return registration;
+    }
+
+    /** Stage 16 -- runs before InternalRequestFilter (order 0 vs 1) so even a request that filter rejects still logs with a real correlation ID. */
+    @Bean
+    public FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter() {
+        FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new CorrelationIdFilter());
+        registration.addUrlPatterns("/*");
+        registration.setOrder(0);
         return registration;
     }
 }

@@ -16,6 +16,7 @@ import com.vicinia.orderservice.exception.ForbiddenException;
 import com.vicinia.orderservice.exception.OrderNotFoundException;
 import com.vicinia.orderservice.messaging.OrderEventPublisher;
 import com.vicinia.orderservice.repository.OrderRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -56,15 +57,23 @@ public class OrderService {
     private final CouponClient couponClient;
     private final PaymentClient paymentClient;
     private final OrderEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
 
     public OrderService(OrderRepository orderRepository, CartClient cartClient, InventoryClient inventoryClient,
-                         CouponClient couponClient, PaymentClient paymentClient, OrderEventPublisher eventPublisher) {
+                         CouponClient couponClient, PaymentClient paymentClient, OrderEventPublisher eventPublisher,
+                         MeterRegistry meterRegistry) {
         this.orderRepository = orderRepository;
         this.cartClient = cartClient;
         this.inventoryClient = inventoryClient;
         this.couponClient = couponClient;
         this.paymentClient = paymentClient;
         this.eventPublisher = eventPublisher;
+        this.meterRegistry = meterRegistry;
+    }
+
+    /** Stage 16's order-funnel dashboard (ARCHITECTURE.md §15): created -> payment success -> merchant acceptance -> delivered, one counter tagged by stage so a Grafana panel can plot all 4 as one query and spot the drop-off. */
+    private void countFunnelStage(String stage) {
+        meterRegistry.counter("order.funnel", "stage", stage).increment();
     }
 
     public PlaceOrderResult placeOrder(UUID userId, PlaceOrderRequest request) {
@@ -162,6 +171,7 @@ public class OrderService {
         order.transitionTo(OrderStatus.MERCHANT_ACCEPTED);
         order.transitionTo(OrderStatus.PREPARING);
         orderRepository.save(order);
+        countFunnelStage("merchant_acceptance");
     }
 
     /** A merchant rejection after payment succeeded needs the same compensating actions as a customer cancel — release the reservation, refund via the same order.cancelled -> payment-service path (§8's REST-vs-Kafka rule still applies: order-service doesn't need the refund's result to decide anything next). */
@@ -214,6 +224,7 @@ public class OrderService {
         order.transitionTo(OrderStatus.DELIVERED);
         Order saved = orderRepository.save(order);
         eventPublisher.publishDelivered(saved.getId(), saved.getMerchantId(), saved.getTotalAmount());
+        countFunnelStage("delivered");
     }
 
     public Order getById(UUID orderId, UUID userId) {
@@ -260,7 +271,9 @@ public class OrderService {
         for (CartClient.CartLine line : cart.items()) {
             order.addItem(new OrderItem(line.listingId(), line.productId(), line.productName(), line.price(), line.quantity()));
         }
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        countFunnelStage("created");
+        return saved;
     }
 
     Order applyCoupon(Order order, String couponCode, BigDecimal discount) {
@@ -286,7 +299,9 @@ public class OrderService {
 
     Order markConfirmed(Order order) {
         order.transitionTo(OrderStatus.CONFIRMED);
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        countFunnelStage("payment_success");
+        return saved;
     }
 
     /** review-service's eligibility gate (Stage 13) — read-only, no state to mutate here. */
