@@ -2,9 +2,14 @@ package com.vicinia.inventoryservice.repository;
 
 import com.vicinia.inventoryservice.domain.MerchantListing;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -39,8 +44,11 @@ class MerchantListingRepositoryIntegrationTest {
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     private MerchantListingRepository listingRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private MerchantListing newListing(int availableStock) {
         MerchantListing listing = new MerchantListing(
@@ -107,11 +115,28 @@ class MerchantListingRepositoryIntegrationTest {
      * 0002) should serialize all 20 attempts against the same row, so
      * exactly 10 succeed and 10 correctly no-op — never 11+ successes,
      * which would mean stock went negative.
+     *
+     * <p>Two things a single-threaded test never has to deal with, both
+     * needed here: (1) {@code @DataJpaTest}'s class-level transaction runs
+     * on the main thread only and is never committed (rolled back at
+     * teardown), so a listing saved inside it would be invisible to every
+     * worker thread's own connection under Postgres's READ COMMITTED —
+     * {@code NOT_SUPPORTED} on this method makes the seed a real, committed
+     * write. (2) unlike {@code InventoryService.reserve()} (always called
+     * within its own {@code @Transactional} boundary), a bare custom
+     * {@code @Modifying @Query} method invoked directly, off the thread
+     * that holds any ambient transaction, isn't reliably auto-wrapped by
+     * Spring Data's repository proxy — see spring-projects/spring-data-jpa
+     * #1420/#3237/#3733 — so each worker opens a real transaction itself
+     * via {@link TransactionTemplate}, exactly mirroring the production
+     * call path's actual transactional boundary instead of relying on it.
      */
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void tryReserve_neverOversellsUnderConcurrency() throws InterruptedException {
         MerchantListing listing = newListing(10);
         int attempts = 20;
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
         ExecutorService pool = Executors.newFixedThreadPool(attempts);
         CountDownLatch ready = new CountDownLatch(attempts);
@@ -124,7 +149,8 @@ class MerchantListingRepositoryIntegrationTest {
                 ready.countDown();
                 try {
                     go.await();
-                    if (listingRepository.tryReserve(listing.getId(), 1) == 1) {
+                    int updated = transactionTemplate.execute(status -> listingRepository.tryReserve(listing.getId(), 1));
+                    if (updated == 1) {
                         successes.incrementAndGet();
                     }
                 } catch (InterruptedException e) {
