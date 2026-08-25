@@ -1,16 +1,84 @@
 {
   "info": {
-    "name": "Vicinia — Stage 0-2 Endpoints",
-    "description": "Every endpoint that exists through Stage 2 (auth-service, user-service), routed through api-gateway. Run 'Signup' or 'Login' first — their test scripts auto-capture accessToken/refreshToken/userId into collection variables, which every other request reuses automatically.",
+    "name": "Vicinia \u2014 Full API (Stage 0-16)",
+    "description": "Every gateway-routed endpoint across all 16 services, current through Stage 16 (observability). Run 'Auth > Signup' first for a plain customer \u2014 its test script auto-captures accessToken/refreshToken/userId, which every customer-scoped request below reuses automatically. Each of Merchant/Delivery has its own role-specific signup request at the top of its folder for the same reason.\n\nADMIN BOOTSTRAP: there's no self-registration for ADMIN (auth-service rejects it, 400) and no admin bootstrap flow exists yet (a known, documented gap \u2014 see BUILD_TRACKER.md Stage 3's notes) \u2014 sign up a plain CUSTOMER, grant the ADMIN role directly via SQL (INSERT INTO user_roles ... SELECT ... FROM roles WHERE name='ADMIN', against auth_db), then log in again and paste the resulting accessToken into the adminAccessToken collection variable by hand.\n\nRecommended run order for a full, realistic order lifecycle: Auth > Signup (customer) -> Merchant > Signup+Apply -> (admin-approve the merchant) -> Merchant > Update Store Profile/Hours + Go Live -> Catalog > Create Product (admin, or request+approve as merchant) -> Inventory > Create Listing -> Cart > Add Item -> Payment > Top Up Wallet -> Order > Place Order -> Merchant Orders > Accept/Ready -> Delivery > Signup+Go Online -> Tasks > Accept/Picked Up/Delivered -> Review > Create Review, Settlement > My Settlement Entries.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "userId", "value": "" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "addressId", "value": "" },
-    { "key": "resetToken", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "addressId",
+      "value": ""
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "description": "Set by hand \u2014 see the 'ADMIN BOOTSTRAP' note in this collection's description."
+    },
+    {
+      "key": "merchantUserId",
+      "value": ""
+    },
+    {
+      "key": "merchantAccessToken",
+      "value": ""
+    },
+    {
+      "key": "merchantRefreshToken",
+      "value": ""
+    },
+    {
+      "key": "merchantId",
+      "value": "",
+      "description": "The Merchant application's own id (from Apply as Merchant) \u2014 distinct from merchantUserId."
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "listingId",
+      "value": ""
+    },
+    {
+      "key": "couponId",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "deliveryUserId",
+      "value": ""
+    },
+    {
+      "key": "deliveryAccessToken",
+      "value": ""
+    },
+    {
+      "key": "deliveryRefreshToken",
+      "value": ""
+    }
   ],
   "item": [
     {
@@ -20,13 +88,28 @@
           "name": "Signup",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/signup", "host": ["{{baseUrl}}"], "path": ["api", "auth", "signup"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"riya@example.com\",\n  \"password\": \"supersecret123\",\n  \"role\": \"CUSTOMER\"\n}"
             },
-            "description": "role is optional (defaults to CUSTOMER) and must be one of CUSTOMER, MERCHANT, DELIVERY_PARTNER — ADMIN cannot self-register (400). Returns 409 if the email is already registered."
+            "description": "role is optional (defaults to CUSTOMER) and must be one of CUSTOMER, MERCHANT, DELIVERY_PARTNER \u2014 ADMIN cannot self-register (400). Returns 409 if the email is already registered."
           },
           "event": [
             {
@@ -49,8 +132,23 @@
           "name": "Login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"riya@example.com\",\n  \"password\": \"supersecret123\"\n}"
@@ -78,13 +176,28 @@
           "name": "Refresh Token",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
-            "description": "Rotates the refresh token — the old one becomes invalid the instant this succeeds (re-running this exact request twice in a row will 401 on the second try, by design)."
+            "description": "Rotates the refresh token \u2014 the old one becomes invalid the instant this succeeds (re-running this exact request twice in a row will 401 on the second try, by design)."
           },
           "event": [
             {
@@ -106,35 +219,80 @@
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] },
-            "description": "Blacklists the current access token and revokes the refresh token. Any request using {{accessToken}} after this will 401 — re-run Login to get a fresh one."
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Blacklists the current access token and revokes the refresh token. Any request using {{accessToken}} after this will 401 \u2014 re-run Login to get a fresh one."
           }
         },
         {
           "name": "Forgot Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "forgot-password"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"riya@example.com\"\n}"
             },
-            "description": "Always returns 200 with the same message, whether or not the email exists (no account enumeration). Since notification-service doesn't exist yet, the actual reset token is only visible in auth-service's own log output (logs/auth-service.log) — copy it into the resetToken variable to test Reset Password below."
+            "description": "Always returns 200 with the same message, whether or not the email exists (no account enumeration). Since notification-service doesn't exist yet, the actual reset token is only visible in auth-service's own log output (logs/auth-service.log) \u2014 copy it into the resetToken variable to test Reset Password below."
           }
         },
         {
           "name": "Reset Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/api/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "reset-password"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"brandnewpass456\"\n}"
             },
-            "description": "One-time use — a second attempt with the same token 401s. Also revokes all existing refresh sessions for that user."
+            "description": "One-time use \u2014 a second attempt with the same token 401s. Also revokes all existing refresh sessions for that user."
           }
         }
       ]
@@ -146,9 +304,25 @@
           "name": "Get My Profile",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/users/me/profile", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "profile"] },
-            "description": "404 for a few seconds right after Signup — the profile is created asynchronously by user-service consuming the user.registered Kafka event, not synchronously by the signup call itself."
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
+            "description": "404 for a few seconds right after Signup \u2014 the profile is created asynchronously by user-service consuming the user.registered Kafka event, not synchronously by the signup call itself."
           }
         },
         {
@@ -156,10 +330,27 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/users/me/profile", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "profile"] },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "profile"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fullName\": \"Riya Sharma\",\n  \"phone\": \"+91-9876543210\"\n}"
@@ -170,8 +361,24 @@
           "name": "List My Addresses",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses"] }
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "addresses"
+              ]
+            }
           }
         },
         {
@@ -179,10 +386,27 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses"] },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "addresses"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"label\": \"Home\",\n  \"line1\": \"221B Baker Street\",\n  \"line2\": \"Near Central Park\",\n  \"city\": \"Bengaluru\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560001\",\n  \"isDefault\": true\n}"
@@ -207,12 +431,27 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/users/me/addresses/{{addressId}}",
-              "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses", "{{addressId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "addresses",
+                "{{addressId}}"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -224,12 +463,2129 @@
           "name": "Delete Address",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/users/me/addresses/{{addressId}}",
-              "host": ["{{baseUrl}}"], "path": ["api", "users", "me", "addresses", "{{addressId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "addresses",
+                "{{addressId}}"
+              ]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "Merchant",
+      "item": [
+        {
+          "name": "Signup (Merchant role)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"storekeeper@example.com\",\n  \"password\": \"supersecret123\",\n  \"role\": \"MERCHANT\"\n}"
+            },
+            "description": "Creates a MERCHANT-role account \u2014 separate from the customer 'Signup' in the Auth folder. Run this once before anything else in this folder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.userId !== undefined && body.userId !== null) pm.collectionVariables.set('merchantUserId', body.userId);",
+                  "  if (body.accessToken !== undefined && body.accessToken !== null) pm.collectionVariables.set('merchantAccessToken', body.accessToken);",
+                  "  if (body.refreshToken !== undefined && body.refreshToken !== null) pm.collectionVariables.set('merchantRefreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply as Merchant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeName\": \"Riya's Kirana Store\",\n  \"description\": \"Fresh groceries, daily essentials\",\n  \"addressLine1\": \"12 MG Road\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560001\",\n  \"documents\": [\n    {\n      \"documentType\": \"GST\",\n      \"referenceUrl\": \"https://example.com/gst-cert.pdf\"\n    }\n  ]\n}"
+            },
+            "description": "Creates the merchant application in PENDING_REVIEW. An ADMIN must approve it (see Admin > Approve Merchant) before /me/go-live will work."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('merchantId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Store",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update My Store Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeName\": \"Riya's Kirana Store\",\n  \"description\": \"Fresh groceries, daily essentials\",\n  \"addressLine1\": \"12 MG Road\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"pincode\": \"560001\",\n  \"latitude\": 12.9352,\n  \"longitude\": 77.6146,\n  \"deliveryRadiusKm\": 5.0\n}"
+            },
+            "description": "latitude/longitude are required before /me/ready (merchant marking an order ready for pickup, see Merchant Orders) will work \u2014 delivery-service needs them to search for a nearby partner."
+          }
+        },
+        {
+          "name": "Update My Business Hours",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me/hours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me",
+                "hours"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"openTime\": \"09:00:00\",\n  \"closeTime\": \"22:00:00\"\n}"
+            },
+            "description": "Required before /me/go-live \u2014 a store can't go live without published hours."
+          }
+        },
+        {
+          "name": "Go Live",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me/go-live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me",
+                "go-live"
+              ]
+            },
+            "description": "Requires the merchant to already be ADMIN-approved (status ONBOARDING) with hours set. On success, status becomes LIVE and the store is orderable."
+          }
+        },
+        {
+          "name": "Close Store (temporarily)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reopen Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/me/reopen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "me",
+                "reopen"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Browse Nearby Stores (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/merchants/nearby?city=Bangalore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchants",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Bangalore"
+                }
+              ]
+            },
+            "description": "Public \u2014 no Authorization header needed (api-gateway's public-paths). Only returns LIVE stores."
+          }
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "List Pending Merchants",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/admin/pending",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "admin",
+                    "pending"
+                  ]
+                },
+                "description": "Requires MERCHANT_APPROVE (seeded onto ADMIN). See the 'Admin Bootstrap' note at the collection root for how to get an admin token \u2014 there's no self-registration for ADMIN."
+              }
+            },
+            {
+              "name": "Approve Merchant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/admin/{{merchantId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "admin",
+                    "{{merchantId}}",
+                    "approve"
+                  ]
+                },
+                "description": "Transitions PENDING_REVIEW -> ONBOARDING. Uses the merchantId captured by 'Apply as Merchant' (the application's own id, not the owner's userId)."
+              }
+            },
+            {
+              "name": "Reject Merchant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/admin/{{merchantId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "admin",
+                    "{{merchantId}}",
+                    "reject"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Documents unclear \\u2014 please resubmit a legible GST certificate\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Suspend Merchant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/admin/{{merchantId}}/suspend",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "admin",
+                    "{{merchantId}}",
+                    "suspend"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Repeated customer complaints under investigation\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Reinstate Merchant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/admin/{{merchantId}}/reinstate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "admin",
+                    "{{merchantId}}",
+                    "reinstate"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merchant Orders",
+          "item": [
+            {
+              "name": "List Pending Orders",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/orders/pending",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "orders",
+                    "pending"
+                  ]
+                },
+                "description": "Orders auto-created here from order.confirmed Kafka events \u2014 place a real order first (see Order folder) as this same merchant's customer."
+              }
+            },
+            {
+              "name": "Accept Order",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/orders/{{orderId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "orders",
+                    "{{orderId}}",
+                    "accept"
+                  ]
+                },
+                "description": "order-service double-hops CONFIRMED -> MERCHANT_ACCEPTED -> PREPARING on success."
+              }
+            },
+            {
+              "name": "Reject Order",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/orders/{{orderId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "orders",
+                    "{{orderId}}",
+                    "reject"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Out of stock on one of the ordered items\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Mark Order Ready",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{merchantAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/merchants/orders/{{orderId}}/ready",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "merchants",
+                    "orders",
+                    "{{orderId}}",
+                    "ready"
+                  ]
+                },
+                "description": "400 StoreLocationNotSetException if latitude/longitude aren't set (see Update My Store Profile). Publishes order.ready, which delivery-service consumes to search for a nearby online partner."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "Search Products (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products/search?q=milk&category=Dairy & Eggs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "milk"
+                },
+                {
+                  "key": "category",
+                  "value": "Dairy & Eggs"
+                }
+              ]
+            },
+            "description": "Public \u2014 both q and category are optional filters."
+          }
+        },
+        {
+          "name": "Get Product by Id (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Request New Product (as Merchant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products",
+                "request"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amul Gold Milk 500ml\",\n  \"brand\": \"Amul\",\n  \"category\": \"Dairy & Eggs\",\n  \"description\": \"Full cream milk\",\n  \"images\": [\n    \"https://example.com/milk.jpg\"\n  ],\n  \"attributes\": {\n    \"unit\": \"500ml\"\n  }\n}"
+            },
+            "description": "Lands in PENDING_REVIEW \u2014 an admin must approve it (see Admin > Approve Product) before it's usable in a listing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('productId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Requested Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/products/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Categories (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalog/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Create Product Directly",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/catalog/admin/products",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "catalog",
+                    "admin",
+                    "products"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Amul Gold Milk 500ml\",\n  \"brand\": \"Amul\",\n  \"category\": \"Dairy & Eggs\",\n  \"description\": \"Full cream milk\",\n  \"images\": [\n    \"https://example.com/milk.jpg\"\n  ],\n  \"attributes\": {\n    \"unit\": \"500ml\"\n  }\n}"
+                },
+                "description": "Requires CATALOG_MANAGE. Skips the PENDING_REVIEW step entirely \u2014 status is APPROVED immediately."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "  const body = pm.response.json();",
+                      "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('productId', body.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Pending Products",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/catalog/admin/products/pending",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "catalog",
+                    "admin",
+                    "products",
+                    "pending"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve Product",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/catalog/admin/products/{{productId}}/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "catalog",
+                    "admin",
+                    "products",
+                    "{{productId}}",
+                    "approve"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reject Product",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/catalog/admin/products/{{productId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "catalog",
+                    "admin",
+                    "products",
+                    "{{productId}}",
+                    "reject"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Duplicate of an existing catalog entry\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Create Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/catalog/admin/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "catalog",
+                    "admin",
+                    "categories"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Dairy & Eggs\"\n}"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Create Listing (as Merchant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/listings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "listings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"price\": 40.0,\n  \"availableStock\": 50\n}"
+            },
+            "description": "productId must already be an APPROVED catalog product (see Catalog folder). merchantId is always the caller's own X-User-Id, never taken from the body."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('listingId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Listings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/listings/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "listings",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Listing",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "listings",
+                "{{listingId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 42.0,\n  \"availableStock\": 60,\n  \"active\": true\n}"
+            },
+            "description": "Every field is optional \u2014 a partial update, only supplied fields change."
+          }
+        },
+        {
+          "name": "Listings by Product (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/listings/product/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "listings",
+                "product",
+                "{{productId}}"
+              ]
+            },
+            "description": "Public \u2014 every merchant currently selling this product, for a product detail page's 'available at' list."
+          }
+        },
+        {
+          "name": "Get Listing by Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/listings/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "listings",
+                "{{listingId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "Get My Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cart"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"quantity\": 2\n}"
+            },
+            "description": "ADR 0001: single-merchant-per-cart \u2014 adding a listing from a different merchant than what's already in the cart is rejected."
+          }
+        },
+        {
+          "name": "Update Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "{{listingId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove Item from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart/items/{{listingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "{{listingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cart"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Coupon",
+      "item": [
+        {
+          "name": "Validate Coupon (preview)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/coupons/validate?code=WELCOME10&orderValue=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "coupons",
+                "validate"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "WELCOME10"
+                },
+                {
+                  "key": "orderValue",
+                  "value": "500"
+                }
+              ]
+            },
+            "description": "Read-only preview \u2014 never touches usage_count. Create a coupon first (see Admin > Create Coupon)."
+          }
+        },
+        {
+          "name": "Apply Coupon to Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/coupons/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "coupons",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"orderId\": \"{{orderId}}\",\n  \"orderValue\": 500.0\n}"
+            },
+            "description": "Records real usage (usage_count increments, a CouponUsage row is created) \u2014 this is what order-service calls internally during checkout too."
+          }
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Create Coupon",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/coupons/admin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "coupons",
+                    "admin"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"WELCOME10\",\n  \"description\": \"10% off, up to \\u20b950, on orders over \\u20b9200\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 10,\n  \"maxDiscountAmount\": 50,\n  \"minOrderValue\": 200,\n  \"usageLimit\": 1000,\n  \"perUserLimit\": 1,\n  \"validFrom\": null,\n  \"validUntil\": null\n}"
+                },
+                "description": "Requires COUPON_MANAGE. discountType is PERCENTAGE or FLAT."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "  const body = pm.response.json();",
+                      "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('couponId', body.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List All Coupons",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/coupons/admin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "coupons",
+                    "admin"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Coupon",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/coupons/admin/{{couponId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "coupons",
+                    "admin",
+                    "{{couponId}}"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"active\": false\n}"
+                },
+                "description": "Every field optional \u2014 a partial update, same convention as inventory-service's UpdateListingRequest."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "item": [
+        {
+          "name": "Get Wallet Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/wallet/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "wallet",
+                "balance"
+              ]
+            },
+            "description": "Wallet is auto-provisioned from the user.registered Kafka event right after signup \u2014 may 404 for a second or two immediately after Signup."
+          }
+        },
+        {
+          "name": "Top Up Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/wallet/topup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "wallet",
+                "topup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500.0\n}"
+            },
+            "description": "Needed before placing a WALLET-method order in the Order folder."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Order",
+      "item": [
+        {
+          "name": "Place Order (Wallet)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"couponCode\": null,\n  \"paymentMethod\": \"WALLET\"\n}"
+            },
+            "description": "Reads the caller's own cart (must be non-empty, single-merchant, see Cart folder), reserves inventory, debits the wallet synchronously. paymentMethod defaults to WALLET if omitted; couponCode is optional."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id !== undefined && body.id !== null) pm.collectionVariables.set('orderId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place Order (Razorpay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"couponCode\": null,\n  \"paymentMethod\": \"RAZORPAY\"\n}"
+            },
+            "description": "Order lands in PAYMENT_PENDING with a real razorpayOrderId/razorpayKeyId in the response \u2014 resolves to CONFIRMED only once Razorpay's webhook fires (asynchronous by nature, see payment-service's RazorpayWebhookController). Requires real Razorpay test-mode credentials in .env."
+          }
+        },
+        {
+          "name": "My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Order by Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Changed my mind\"\n}"
+            },
+            "description": "Only allowed pre-DELIVERED (CREATED/CONFIRMED/PREPARING -> CANCELLED); releases the inventory reservation and triggers an async refund via order.cancelled."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery",
+      "item": [
+        {
+          "name": "Signup (Delivery Partner role)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rider@example.com\",\n  \"password\": \"supersecret123\",\n  \"role\": \"DELIVERY_PARTNER\"\n}"
+            },
+            "description": "Auto-provisions a DeliveryPartner row (status OFFLINE) via the user.registered Kafka event \u2014 nothing else to set up."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.userId !== undefined && body.userId !== null) pm.collectionVariables.set('deliveryUserId', body.userId);",
+                  "  if (body.accessToken !== undefined && body.accessToken !== null) pm.collectionVariables.set('deliveryAccessToken', body.accessToken);",
+                  "  if (body.refreshToken !== undefined && body.refreshToken !== null) pm.collectionVariables.set('deliveryRefreshToken', body.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Partner",
+          "item": [
+            {
+              "name": "Get My Partner Status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/partners/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "partners",
+                    "me"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Go Online",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/partners/online",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "partners",
+                    "online"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"latitude\": 12.9358,\n  \"longitude\": 77.615\n}"
+                },
+                "description": "Writes into Redis GEO (key delivery:partners:online) so order.ready's nearest-partner search can find this partner. Use coordinates near whatever merchant location you set in the Merchant folder."
+              }
+            },
+            {
+              "name": "Go Offline",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/partners/offline",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "partners",
+                    "offline"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Ping Live Location",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/partners/location",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "partners",
+                    "location"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"latitude\": 12.936,\n  \"longitude\": 77.6155\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tasks",
+          "item": [
+            {
+              "name": "Accept Delivery Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/tasks/{{orderId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "tasks",
+                    "{{orderId}}",
+                    "accept"
+                  ]
+                },
+                "description": "Only works once delivery-service has actually assigned this order's task to this partner (via order.ready + a nearby GEO search) \u2014 mark the order ready first (Merchant > Merchant Orders > Mark Order Ready)."
+              }
+            },
+            {
+              "name": "Reject Delivery Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/tasks/{{orderId}}/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "tasks",
+                    "{{orderId}}",
+                    "reject"
+                  ]
+                },
+                "description": "Cycles the task back to PENDING_ASSIGNMENT with this partner excluded from the next search, rather than a terminal REJECTED status \u2014 the order still needs delivering."
+              }
+            },
+            {
+              "name": "Mark Picked Up",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/tasks/{{orderId}}/picked-up",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "tasks",
+                    "{{orderId}}",
+                    "picked-up"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Mark Delivered",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{deliveryAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/delivery/tasks/{{orderId}}/delivered",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "tasks",
+                    "{{orderId}}",
+                    "delivered"
+                  ]
+                },
+                "description": "order-service double-hops DELIVERY_ASSIGNED -> OUT_FOR_DELIVERY -> DELIVERED on success, then publishes order.delivered (settlement-service's trigger)."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notification",
+      "item": [
+        {
+          "name": "My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "mine"
+              ]
+            },
+            "description": "Populated from 4 consumed Kafka events (user.registered, order.confirmed, payment.failed, inventory.low) \u2014 a welcome notification should already be here right after Signup."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Review",
+      "item": [
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"rating\": 5,\n  \"comment\": \"Great quality, fast delivery!\"\n}"
+            },
+            "description": "403 unless this exact user has a DELIVERED order containing this productId (checked live against order-service). 409 on a second review of the same product by the same user \u2014 one review per (user, product), enforced by a real unique index."
+          }
+        },
+        {
+          "name": "My Reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reviews for a Product (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "products",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Product Rating Aggregate (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/products/{{productId}}/rating",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "products",
+                "{{productId}}",
+                "rating"
+              ]
+            },
+            "description": "Computed live via a MongoDB aggregation, not a stored running average \u2014 {productId, averageRating, reviewCount}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settlement",
+      "item": [
+        {
+          "name": "My Settlement Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settlements/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settlements",
+                "mine"
+              ]
+            },
+            "description": "One entry per delivered order for this merchant (gross/commission/net) \u2014 see Delivery > Tasks > Mark Delivered to produce one."
+          }
+        },
+        {
+          "name": "My Payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{merchantAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/settlements/payouts/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settlements",
+                "payouts",
+                "mine"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "List All Settlement Entries",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/settlements/admin/entries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "settlements",
+                    "admin",
+                    "entries"
+                  ]
+                },
+                "description": "Requires SETTLEMENT_MANAGE."
+              }
+            },
+            {
+              "name": "List All Payouts",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/settlements/admin/payouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "settlements",
+                    "admin",
+                    "payouts"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Run Payout Batch Now",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/settlements/admin/payouts/run-batch",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "settlements",
+                    "admin",
+                    "payouts",
+                    "run-batch"
+                  ]
+                },
+                "description": "On-demand version of the scheduled daily job \u2014 groups every merchant's PENDING entries into one new Payout each (summing net, not gross)."
+              }
+            },
+            {
+              "name": "Run Payout Processor Tick Now",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/settlements/admin/payouts/run-processor",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "settlements",
+                    "admin",
+                    "payouts",
+                    "run-processor"
+                  ]
+                },
+                "description": "On-demand version of the scheduled 30s tick \u2014 advances PENDING->PROCESSING immediately, and PROCESSING->PAID once the configured processing delay has passed."
+              }
+            }
+          ]
         }
       ]
     },
@@ -238,30 +2594,369 @@
       "item": [
         {
           "name": "api-gateway health",
-          "request": { "method": "GET", "url": { "raw": "http://localhost:8080/actuator/health", "host": ["localhost"], "port": "8080", "path": ["actuator", "health"] } }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8080"
+            }
+          }
         },
         {
           "name": "discovery-server health",
-          "request": { "method": "GET", "url": { "raw": "http://localhost:8761/actuator/health", "host": ["localhost"], "port": "8761", "path": ["actuator", "health"] } }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8761/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8761"
+            }
+          }
         },
         {
           "name": "config-server health",
-          "request": { "method": "GET", "url": { "raw": "http://localhost:8888/actuator/health", "host": ["localhost"], "port": "8888", "path": ["actuator", "health"] } }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8888/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8888"
+            }
+          }
         },
         {
           "name": "auth-service health",
-          "request": { "method": "GET", "url": { "raw": "http://localhost:8081/actuator/health", "host": ["localhost"], "port": "8081", "path": ["actuator", "health"] } }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8081"
+            }
+          }
         },
         {
           "name": "user-service health",
-          "request": { "method": "GET", "url": { "raw": "http://localhost:8082/actuator/health", "host": ["localhost"], "port": "8082", "path": ["actuator", "health"] } }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8082"
+            }
+          }
+        },
+        {
+          "name": "merchant-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8083"
+            }
+          }
+        },
+        {
+          "name": "catalog-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8084/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8084"
+            }
+          }
+        },
+        {
+          "name": "inventory-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8085"
+            }
+          }
+        },
+        {
+          "name": "cart-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8086/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8086"
+            }
+          }
+        },
+        {
+          "name": "coupon-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8087/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8087"
+            }
+          }
+        },
+        {
+          "name": "payment-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8088/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8088"
+            }
+          }
+        },
+        {
+          "name": "order-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8089/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8089"
+            }
+          }
+        },
+        {
+          "name": "delivery-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8090/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8090"
+            }
+          }
+        },
+        {
+          "name": "notification-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8091/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8091"
+            }
+          }
+        },
+        {
+          "name": "review-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8092/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8092"
+            }
+          }
+        },
+        {
+          "name": "settlement-service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8093/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ],
+              "port": "8093"
+            }
+          }
         },
         {
           "name": "Eureka registry (JSON)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "http://localhost:8761/eureka/apps", "host": ["localhost"], "port": "8761", "path": ["eureka", "apps"] }
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8761/eureka/apps",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "eureka",
+                "apps"
+              ],
+              "port": "8761"
+            }
+          }
+        },
+        {
+          "name": "Prometheus targets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:9090/api/v1/targets",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "targets"
+              ],
+              "port": "9090"
+            }
+          }
+        },
+        {
+          "name": "Grafana health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "port": "3000"
+            }
           }
         }
       ]
