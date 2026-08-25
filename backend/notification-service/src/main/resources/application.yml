@@ -1,0 +1,52 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: notification-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/notification_db}
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      # No business events of this service's own to publish, but
+      # @RetryableTopic's internal republish to retry/DLT topics still
+      # needs a real producer — Stage 10's bug (a consumer-only service
+      # with no producer config threw ClassCastException the first time
+      # a message actually failed) is avoided here from day one.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      # A brand-new consumer group across 4 topics it's never read before.
+      # Deliberately earliest, same reasoning as delivery-service's
+      # user-events choice: backfill value exists for user.registered (a
+      # user who signed up before this service existed still deserves a
+      # welcome notification), and Kafka's auto-offset-reset is
+      # consumer-group-wide, not per-topic, so the other 3 topics inherit
+      # it too — harmless, since a stale order.confirmed/payment.failed/
+      # inventory.low just produces one extra logged notification, not a
+      # state change anywhere.
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.vicinia.notificationservice.messaging
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.vicinia.notificationservice.messaging.IncomingEventEnvelope
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

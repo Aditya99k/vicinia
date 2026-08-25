@@ -47,4 +47,4 @@ Then:
 
 ## Status
 
-Stage 11 (delivery) — see `docs/BUILD_TRACKER.md` for current progress.
+Stage 12 (notification) — see `docs/BUILD_TRACKER.md` for current progress.

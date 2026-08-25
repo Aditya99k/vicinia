@@ -48,6 +48,7 @@ SERVICES=(
   "payment-service:payment-service:8088"
   "order-service:order-service:8089"
   "delivery-service:delivery-service:8090"
+  "notification-service:notification-service:8091"
 )
 
 # ── Colors ─────────────────────────────────────────────────────────
