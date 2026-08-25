@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.vicinia</groupId>
+        <artifactId>vicinia-backend</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>e2e-tests</artifactId>
+    <packaging>jar</packaging>
+    <name>e2e-tests</name>
+    <description>
+        Stage 17's "one full e2e test" (BUILD_TRACKER.md): checkout -&gt;
+        confirm -&gt; merchant accept -&gt; delivery -&gt; deliver -&gt; settlement,
+        driven entirely over HTTP against an already-running stack (started
+        the same way a developer or CI runs it — start-infra.sh / the CI
+        workflow's own equivalent steps), not Testcontainers. This module
+        deliberately has no @SpringBootApplication and depends on nothing
+        else in the reactor — it's a plain JUnit 5 + java.net.http.HttpClient
+        test, exercising the system as a real client would, the same way
+        every stage in this project was verified by hand via curl before
+        this stage automated it.
+    </description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <!-- Default: don't run under a plain reactor `mvn install` (needs a
+             live stack). Override with `-DskipTests=false` to actually run it. -->
+        <skipTests>true</skipTests>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Only for parsing gateway JSON responses — this module has
+                 no Spring context at all, so it can't rely on Spring's
+                 auto-configured ObjectMapper. -->
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <!-- The one non-HTTP step: promoting a fresh signup to ADMIN
+                 directly via SQL, automating the exact manual step this
+                 project's own testing has used since Stage 3 (no admin
+                 bootstrap flow exists yet — a known, documented gap). -->
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- This module has no main application to skip past —
+                         `mvn install` on the reactor shouldn't try to run
+                         this suite (it needs a live stack); only an
+                         explicit `mvn test -DskipTests=false` in this
+                         module, or CI's own dedicated e2e step, runs it. -->
+                    <skipTests>${skipTests}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

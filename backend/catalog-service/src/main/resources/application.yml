@@ -16,6 +16,16 @@ spring:
       # set MONGODB_URI in .env to a real Atlas connection string and this
       # default is never used.
       uri: ${MONGODB_URI:mongodb://localhost:27017/catalog_db}
+      # Stage 17: off by default in Spring Data MongoDB, which means
+      # Category's @Indexed(unique = true) on name/slug (Stage 4) has
+      # never actually been enforced at the database level — a real,
+      # latent bug sitting unnoticed since Stage 4, caught only once a
+      # genuine integration test (Testcontainers Mongo) tried to prove
+      # the constraint held and found it didn't. review-service got this
+      # exact fix in Stage 13 for the same underlying reason; catalog-
+      # service was simply never revisited until this stage's testing
+      # pass actually exercised the index.
+      auto-index-creation: true
 
   kafka:
     bootstrap-servers: localhost:9092

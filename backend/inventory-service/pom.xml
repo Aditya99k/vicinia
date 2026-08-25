@@ -72,5 +72,32 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <dependency>
+            <!-- Stage 17 — reservation math is real atomic-UPDATE SQL, not
+                 pure Java logic, so proving it correct needs a genuine
+                 Postgres engine evaluating the WHERE clause, not H2's
+                 approximation. Versions come from spring-boot-dependencies
+                 (the parent's own BOM), same as every other dependency in
+                 this project that doesn't pin one explicitly. -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

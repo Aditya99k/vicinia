@@ -26,6 +26,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-cloud.version>2023.0.3</spring-cloud.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <!-- Stage 17 — this developer machine's Docker Desktop build
+             (4.87.0, a very recent release) has a reproducible
+             incompatibility with docker-java's version-negotiation for
+             *some* API calls (image inspect, Ryuk's own pull) even though
+             plain `docker` CLI commands against the same daemon work fine
+             — confirmed across both the Spring-Boot-managed 1.19.8 and an
+             explicitly bumped 1.20.6, neither resolves it locally. Left
+             unpinned (Spring Boot's own managed version) since overriding
+             it didn't help; the actual verification for these tests
+             happens in CI (a standard Linux Docker install, not this
+             specific macOS build), matching Stage 17's own "done when:
+             passes in CI, not just locally" bar. -->
+        <testcontainers.version>1.19.8</testcontainers.version>
     </properties>
 
     <!--
@@ -52,6 +65,7 @@
         <module>notification-service</module>
         <module>review-service</module>
         <module>settlement-service</module>
+        <module>e2e-tests</module>
     </modules>
 
     <dependencyManagement>

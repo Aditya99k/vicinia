@@ -1,0 +1,108 @@
+name: CI
+
+# Stage 17 (BUILD_TRACKER.md): "Done when: the e2e test passes in CI, not
+# just locally." Split into two jobs deliberately:
+#
+#   1. test — `mvn test` across the whole backend reactor. Runs the unit
+#      tests AND the Testcontainers-backed repository/Kafka integration
+#      tests. This is the job that was blocked locally by a Docker
+#      Desktop / docker-java version incompatibility on one developer's
+#      machine (see backend/pom.xml's testcontainers.version comment) —
+#      GitHub's Ubuntu runners use a standard Docker install, so it runs
+#      here unaffected by that.
+#
+#   2. e2e — starts the *entire* stack for real via start-infra.sh (the
+#      same script a developer runs locally) and then runs the one full
+#      e2e test (backend/e2e-tests) over plain HTTP against it, exactly
+#      like a real client would.
+#
+# Both jobs run on every push/PR; e2e does not depend on test finishing
+# first (they're independent evidence, and failing fast on either matters
+# more than saving a few minutes of runner time).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit + integration tests (Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: mvn test (unit + Testcontainers integration, all services)
+        working-directory: backend
+        run: mvn -B test
+
+  e2e:
+    name: Full e2e (checkout -> confirm -> merchant accept -> delivery -> deliver -> settlement)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/customer-app/package-lock.json
+
+      - name: Generate .env
+        # CI-only, ephemeral secrets — nothing here needs to persist across
+        # runs or match any real credential. Razorpay keys are left blank;
+        # payment-service tolerates that (application.yml defaults them to
+        # empty) and the e2e test only exercises the WALLET payment path.
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=vicinia
+          POSTGRES_PASSWORD=vicinia
+          POSTGRES_DB=vicinia
+          VICINIA_INTERNAL_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+          VICINIA_JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")
+          RAZORPAY_KEY_ID=
+          RAZORPAY_KEY_SECRET=
+          RAZORPAY_WEBHOOK_SECRET=
+          EOF
+
+      - name: Start the full stack (./start-infra.sh)
+        run: ./start-infra.sh
+
+      - name: Run the e2e test
+        working-directory: backend
+        run: mvn -B -pl e2e-tests test -DskipTests=false
+
+      - name: Stop the stack
+        if: always()
+        run: ./stop-infra.sh
+
+      - name: Upload service logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vicinia-logs
+          path: logs/*.log
+          retention-days: 5
