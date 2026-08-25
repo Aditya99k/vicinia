@@ -1,10 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
-import { BellIcon } from './Icons';
+import { useAuth } from '../context/AuthContext';
+import { primaryRole } from '../utils/roles';
+import { notificationTarget } from '../utils/notificationTarget';
+import { AlertIcon, BellIcon, CheckCircleIcon, PackageIcon, TruckIcon, UserIcon } from './Icons';
 import { formatDateTime } from '../utils/format';
 
+const ICONS = {
+  check: CheckCircleIcon,
+  package: PackageIcon,
+  alert: AlertIcon,
+  truck: TruckIcon,
+  user: UserIcon,
+  bell: BellIcon,
+};
+
+const TONES = {
+  check: 'success',
+  package: 'brand',
+  alert: 'danger',
+  truck: 'brand',
+  user: 'muted',
+  bell: 'muted',
+};
+
 export default function NotificationsBell() {
-  const { notifications, loading, unseenCount, markSeen } = useNotifications();
+  const { notifications, loading, unseenCount, markSeen, lastSeen } = useNotifications();
+  const { auth } = useAuth();
+  const role = primaryRole(auth);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -23,6 +48,12 @@ export default function NotificationsBell() {
     });
   }
 
+  function handleClick(n) {
+    const { path } = notificationTarget(n, role);
+    setOpen(false);
+    if (path) navigate(path);
+  }
+
   return (
     <div className="notifications-wrap" ref={wrapRef}>
       <button className="icon-btn cart-btn" onClick={toggle} aria-label="Notifications">
@@ -39,13 +70,29 @@ export default function NotificationsBell() {
             <div className="search-suggestion-empty">Nothing yet — you'll see updates here as they happen.</div>
           ) : (
             <div className="notifications-list">
-              {notifications.slice(0, 20).map((n) => (
-                <div className="notification-row" key={n.id}>
-                  <div className="subject">{n.subject}</div>
-                  <div className="body">{n.body}</div>
-                  <div className="muted">{formatDateTime(n.createdAt)}</div>
-                </div>
-              ))}
+              {notifications.slice(0, 20).map((n) => {
+                const { icon, path } = notificationTarget(n, role);
+                const Icon = ICONS[icon];
+                const tone = TONES[icon];
+                const unseen = !lastSeen || n.createdAt > lastSeen;
+                return (
+                  <button
+                    type="button"
+                    className={`notification-row ${path ? 'clickable' : ''} ${unseen ? 'unseen' : ''}`}
+                    key={n.id}
+                    onClick={() => handleClick(n)}
+                    disabled={!path}
+                  >
+                    <div className={`notification-icon tone-${tone}`}><Icon style={{ width: 15, height: 15 }} /></div>
+                    <div className="notification-body-col">
+                      <div className="subject">{n.subject}</div>
+                      <div className="body">{n.body}</div>
+                      <div className="muted">{formatDateTime(n.createdAt)}</div>
+                    </div>
+                    {unseen && <span className="notification-dot" />}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

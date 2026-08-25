@@ -37,5 +37,5 @@ export function useNotifications() {
 
   const unseenCount = notifications.filter((n) => !lastSeen || n.createdAt > lastSeen).length;
 
-  return { notifications, loading, unseenCount, markSeen, refresh: load };
+  return { notifications, loading, unseenCount, lastSeen, markSeen, refresh: load };
 }

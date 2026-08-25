@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { acceptTask, delivered, getMe, goOffline, goOnline, pickedUp, rejectTask, updateLocation } from '../../api/delivery';
 import { getActiveTask, recordTask } from '../../utils/deliveryHistory';
 import { NavigationIcon, PackageIcon, TruckIcon } from '../../components/Icons';
@@ -12,6 +13,7 @@ const NEXT_ACTION = {
 };
 
 export default function DeliveryHomePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [partner, setPartner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -25,6 +27,18 @@ export default function DeliveryHomePage() {
   }
 
   useEffect(load, []);
+
+  // Arriving from a "New pickup assigned" notification link carries the
+  // order straight through instead of making the rider retype it.
+  useEffect(() => {
+    const orderId = searchParams.get('orderId');
+    if (!orderId) return;
+    setActiveTask({ orderId, status: 'ASSIGNED', at: new Date().toISOString() });
+    const next = new URLSearchParams(searchParams);
+    next.delete('orderId');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleToggleOnline() {
     setToggling(true);

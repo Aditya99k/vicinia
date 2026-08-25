@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { getProfile, listAddresses } from '../api/user';
 import { getCategories } from '../api/catalog';
 import { nearby } from '../api/merchant';
-import { CheckCircleIcon, ChevronRightIcon, MapPinIcon, StoreIcon } from '../components/Icons';
+import { CheckCircleIcon, ChevronRightIcon, MapPinIcon } from '../components/Icons';
 import { GroceryBagIllustration } from '../components/Illustrations';
 import CategoryGlyphFor from '../components/CategoryGlyphFor';
 import ProductImage from '../components/ProductImage';
-import { loadStorefronts } from '../utils/loadStorefronts';
+import { loadNearbyListings } from '../utils/loadNearbyListings';
 import { formatMoney } from '../utils/format';
 
 export default function HomePage() {
   const { auth } = useAuth();
+  const { addItem } = useCart();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [profilePending, setProfilePending] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [merchants, setMerchants] = useState([]);
-  const [storefronts, setStorefronts] = useState({});
-  const [storefrontsLoading, setStorefrontsLoading] = useState(false);
+  const [nearbyListings, setNearbyListings] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [addingId, setAddingId] = useState(null);
+  const [addedId, setAddedId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -61,15 +65,32 @@ export default function HomePage() {
     // (MerchantSummaryResponse doesn't even carry a status field) — no
     // client-side status filter needed or possible here.
     if (merchants.length === 0) return;
-    setStorefrontsLoading(true);
-    loadStorefronts(merchants)
-      .then(setStorefronts)
-      .catch(() => setStorefronts({}))
-      .finally(() => setStorefrontsLoading(false));
+    setListingsLoading(true);
+    loadNearbyListings(merchants)
+      .then(setNearbyListings)
+      .catch(() => setNearbyListings([]))
+      .finally(() => setListingsLoading(false));
   }, [merchants]);
 
   const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
   const displayName = profile?.fullName || auth?.email?.split('@')[0] || 'there';
+
+  async function handleQuickAdd(e, item) {
+    e.preventDefault();
+    e.stopPropagation();
+    setAddingId(item.id);
+    try {
+      await addItem(item.id, 1);
+      setAddedId(item.id);
+      setTimeout(() => setAddedId(null), 1500);
+    } catch (err) {
+      if (err?.response?.status === 409) {
+        navigate(`/product/${item.productId}?listing=${item.id}`);
+      }
+    } finally {
+      setAddingId(null);
+    }
+  }
 
   return (
     <div className="home-grid">
@@ -113,37 +134,41 @@ export default function HomePage() {
 
         {merchants.length > 0 && (
           <>
-            <div className="section-title"><span>Stores near you</span></div>
-            {storefrontsLoading ? (
+            <div className="section-title"><span>Popular near you</span></div>
+            {listingsLoading ? (
               <div className="page-loading"><span className="spinner" /> Loading…</div>
+            ) : nearbyListings.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>No stores near you have items listed yet.</p>
             ) : (
-              <div className="storefront-grid">
-                {merchants
-                  .filter((m) => (storefronts[m.ownerUserId] || []).length > 0)
-                  .map((m) => {
-                    const items = storefronts[m.ownerUserId] || [];
-                    return (
-                      <div className="storefront" key={m.id}>
-                        <div className="storefront-head">
-                          <div className="merchant-tile-icon"><StoreIcon /></div>
-                          <div>
-                            <div className="name">{m.storeName}</div>
-                            <div className="meta">{m.city}</div>
-                          </div>
-                        </div>
-                        <div className="storefront-items">
-                          {items.map((item) => (
-                            <Link to={`/product/${item.productId}?listing=${item.id}`} className="storefront-item" key={item.id} title={item.productName}>
-                              <div className="storefront-item-image">
-                                <ProductImage src={item.productImage} name={item.productName} />
-                              </div>
-                              <div className="storefront-item-price">{formatMoney(item.price)}</div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="product-grid">
+                {nearbyListings.map((item) => (
+                  <Link to={`/product/${item.productId}?listing=${item.id}`} className="product-card" key={item.id}>
+                    <div className="product-card-image">
+                      <ProductImage src={item.productImage} name={item.productName} />
+                    </div>
+                    <div className="product-card-body">
+                      <div className="brand">{item.productBrand}</div>
+                      <div className="name">{item.productName}</div>
+                      <div className="product-card-store">{item.storeName}</div>
+                    </div>
+                    <div className="product-card-price-row">
+                      <span className="price">{formatMoney(item.price)}</span>
+                      <button
+                        className={`btn btn-sm ${addedId === item.id ? 'btn-secondary' : 'btn-primary'}`}
+                        onClick={(e) => handleQuickAdd(e, item)}
+                        disabled={addingId === item.id}
+                      >
+                        {addingId === item.id ? (
+                          <span className="spinner" />
+                        ) : addedId === item.id ? (
+                          <CheckCircleIcon style={{ width: 14, height: 14 }} />
+                        ) : (
+                          'Add'
+                        )}
+                      </button>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </>
