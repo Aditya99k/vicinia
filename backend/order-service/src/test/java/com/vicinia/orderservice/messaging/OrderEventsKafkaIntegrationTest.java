@@ -2,6 +2,7 @@ package com.vicinia.orderservice.messaging;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vicinia.orderservice.client.InventoryClient;
 import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.domain.OrderItem;
 import com.vicinia.orderservice.domain.OrderStatus;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -85,6 +87,19 @@ class OrderEventsKafkaIntegrationTest {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    /**
+     * OrderService.confirmFromPaymentEvent/failFromPaymentEvent call out to
+     * inventory-service over real HTTP (InventoryClient) — nothing this
+     * test starts. Without this, the redelivery test's own payment.success
+     * message throws on every @RetryableTopic attempt (connection failure,
+     * no inventory-service instance), lands on the DLT after ~14s of
+     * retries, and never confirms — found via a genuine CI run where the
+     * order stayed at PAYMENT_PENDING and the DLQ test then saw more than
+     * the one record it expected.
+     */
+    @MockBean
+    private InventoryClient inventoryClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private KafkaTemplate<String, String> rawStringProducer;
@@ -155,8 +170,10 @@ class OrderEventsKafkaIntegrationTest {
             assertThat(reloaded.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         });
 
-        // No exception, no illegal-transition error from the second (redelivered) message —
-        // the status-guard in OrderService.confirmFromPaymentEvent made it a clean no-op.
+        // The redelivered (second) message reaches the listener too — this proves it was a
+        // clean no-op (the status-guard in OrderService.confirmFromPaymentEvent), not that it
+        // never arrived.
+        org.mockito.Mockito.verify(inventoryClient, org.mockito.Mockito.timeout(5000).times(1)).confirm(order.getId());
     }
 
     // --- 3. DLQ path ---------------------------------------------------------
