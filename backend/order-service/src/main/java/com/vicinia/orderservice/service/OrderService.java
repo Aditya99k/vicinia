@@ -76,6 +76,18 @@ public class OrderService {
         meterRegistry.counter("order.funnel", "stage", stage).increment();
     }
 
+    /**
+     * The funnel counter above only ever tracks forward progress — nothing
+     * in this service previously counted the other outcome: an order that
+     * had to be walked back, and why. Same shape as countFunnelStage
+     * deliberately (one counter, tagged by trigger) so a single Grafana
+     * query can break down every reason an order didn't make it to
+     * delivered, not just see a raw cancelled total.
+     */
+    private void countCompensation(String trigger) {
+        meterRegistry.counter("order.compensation", "trigger", trigger).increment();
+    }
+
     public PlaceOrderResult placeOrder(UUID userId, PlaceOrderRequest request) {
         CartClient.CartView cart = cartClient.getCart(userId);
         if (cart.items().isEmpty()) {
@@ -93,6 +105,7 @@ public class OrderService {
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
             Optional<BigDecimal> discount = couponClient.apply(userId, request.couponCode(), order.getId(), cart.subtotal());
             if (discount.isEmpty()) {
+                countCompensation("coupon_rejected");
                 return PlaceOrderResult.wallet(cancelOrder(order, "Coupon rejected: " + request.couponCode()));
             }
             order = applyCoupon(order, request.couponCode(), discount.get());
@@ -104,6 +117,7 @@ public class OrderService {
 
         boolean reserved = inventoryClient.reserve(order.getId(), reserveItems);
         if (!reserved) {
+            countCompensation("insufficient_stock");
             return PlaceOrderResult.wallet(cancelOrder(order, "Insufficient stock"));
         }
 
@@ -124,6 +138,7 @@ public class OrderService {
         boolean paid = paymentClient.payWithWallet(userId, order.getId(), order.getTotalAmount());
         if (!paid) {
             inventoryClient.release(order.getId());
+            countCompensation("wallet_payment_failed");
             return PlaceOrderResult.wallet(markPaymentFailed(order));
         }
 
@@ -159,6 +174,7 @@ public class OrderService {
             return;
         }
         inventoryClient.release(orderId);
+        countCompensation("razorpay_payment_failed");
         markPaymentFailed(order);
     }
 
@@ -194,6 +210,7 @@ public class OrderService {
         Order saved = orderRepository.save(order);
 
         inventoryClient.release(orderId);
+        countCompensation("merchant_rejected");
         eventPublisher.publishCancelled(saved.getId(), saved.getUserId(), saved.getTotalAmount());
     }
 
@@ -309,6 +326,7 @@ public class OrderService {
         Order saved = orderRepository.save(order);
 
         inventoryClient.release(order.getId());
+        countCompensation("customer_cancelled");
         eventPublisher.publishCancelled(order.getId(), order.getUserId(), order.getTotalAmount());
 
         return saved;
@@ -331,6 +349,7 @@ public class OrderService {
         Order saved = orderRepository.save(order);
 
         inventoryClient.release(order.getId());
+        countCompensation("merchant_cancelled_ready");
         eventPublisher.publishCancelled(order.getId(), order.getUserId(), order.getTotalAmount());
 
         return saved;
