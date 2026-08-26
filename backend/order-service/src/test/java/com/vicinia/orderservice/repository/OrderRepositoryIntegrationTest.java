@@ -3,6 +3,7 @@ package com.vicinia.orderservice.repository;
 import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.domain.OrderItem;
 import com.vicinia.orderservice.domain.OrderStatus;
+import com.vicinia.orderservice.dto.PaymentMethod;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -42,7 +43,7 @@ class OrderRepositoryIntegrationTest {
     private OrderRepository orderRepository;
 
     private Order newOrder(UUID userId, String productId, OrderStatus status) {
-        Order order = new Order(userId, UUID.randomUUID(), new BigDecimal("40.00"));
+        Order order = new Order(userId, UUID.randomUUID(), new BigDecimal("40.00"), PaymentMethod.WALLET);
         order.addItem(new OrderItem(UUID.randomUUID(), productId, "Test Product", new BigDecimal("40.00"), 1));
         // CREATED -> PAYMENT_PENDING -> CONFIRMED is always legal; walk there for any status beyond CREATED.
         if (status != OrderStatus.CREATED) {

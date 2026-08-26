@@ -6,6 +6,7 @@ import com.vicinia.orderservice.client.InventoryClient;
 import com.vicinia.orderservice.domain.Order;
 import com.vicinia.orderservice.domain.OrderItem;
 import com.vicinia.orderservice.domain.OrderStatus;
+import com.vicinia.orderservice.dto.PaymentMethod;
 import com.vicinia.orderservice.repository.OrderRepository;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -122,7 +123,7 @@ class OrderEventsKafkaIntegrationTest {
     }
 
     private Order confirmedOrder() {
-        Order order = new Order(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("40.00"));
+        Order order = new Order(UUID.randomUUID(), UUID.randomUUID(), new BigDecimal("40.00"), PaymentMethod.WALLET);
         order.addItem(new OrderItem(UUID.randomUUID(), "product-1", "Test Product", new BigDecimal("40.00"), 1));
         order.transitionTo(OrderStatus.PAYMENT_PENDING);
         return orderRepository.saveAndFlush(order);
@@ -138,7 +139,7 @@ class OrderEventsKafkaIntegrationTest {
         UUID userId = UUID.randomUUID();
         UUID merchantId = UUID.randomUUID();
 
-        eventPublisher.publishConfirmed(orderId, userId, merchantId);
+        eventPublisher.publishConfirmed(orderId, userId, merchantId, new BigDecimal("40.00"));
 
         ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(rawStringConsumer, "order-events", Duration.ofSeconds(15));
         JsonNode envelope = objectMapper.readTree(record.value());
@@ -148,6 +149,7 @@ class OrderEventsKafkaIntegrationTest {
         assertThat(envelope.get("payload").get("orderId").asText()).isEqualTo(orderId.toString());
         assertThat(envelope.get("payload").get("userId").asText()).isEqualTo(userId.toString());
         assertThat(envelope.get("payload").get("merchantId").asText()).isEqualTo(merchantId.toString());
+        assertThat(envelope.get("payload").get("totalAmount").asText()).isEqualTo("40.00");
     }
 
     // --- 2. Idempotent consumer ---------------------------------------------
