@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Day 6 Build Map (Cloudinary &amp; Live Bug Hunt)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF1F6; --surface: #FFFFFF; --ink: #172233; --muted: #58687F; --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+    --accent: #C6912E; --accent-ink: #241804; --accent-soft: rgba(198,145,46,0.14);
+    --wire-build: #6C87A8; --wire-deep: #B0765A;
+    --wash-build: rgba(62,124,166,0.05); --wash-deep: rgba(181,101,58,0.06);
+    --tag-build: #3E7CA6; --tag-deep: #B5653A;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --wire-build: #6E8FBD; --wire-deep: #C6835F;
+      --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+      --tag-build: #85AFDD; --tag-deep: #E0A17D;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --wire-build: #6E8FBD; --wire-deep: #C6835F;
+    --wash-build: rgba(110,143,189,0.07); --wash-deep: rgba(198,131,95,0.07);
+    --tag-build: #85AFDD; --tag-deep: #E0A17D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper); color: var(--ink); font-family: var(--font-serif); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, .mono { font-family: var(--font-mono); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; } }
+
+  .titleblock { max-width: 1240px; margin: 0 auto; padding: 40px 28px 20px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+  .titleblock h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: block; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1rem; max-width: 52ch; margin-top: 10px; }
+  .stamp { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; display: grid; grid-template-columns: auto auto; gap: 4px 16px; background: var(--surface); }
+  .stamp .k { text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .stamp .v { color: var(--ink); font-weight: 500; }
+
+  .board { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+  .canvas { position: relative; display: flex; align-items: stretch; gap: 48px; }
+  .connectors { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .wire { stroke-width: 1.6; fill: none; opacity: 0.85; }
+  .wire-spine { stroke: var(--accent); stroke-width: 2; }
+  .wire-build { stroke: var(--wire-build); }
+  .wire-deep { stroke: var(--wire-deep); }
+
+  .col-root { flex: 0 0 auto; display: flex; align-items: center; }
+  .node-root { position: relative; width: 168px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 20px 18px; font-family: var(--font-mono); }
+  .node-root .eyebrow { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+  .node-root h2 { font-size: 1.15rem; font-weight: 700; margin-top: 4px; line-height: 1.25; }
+  .node-root .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--accent); transform: translateY(-50%); }
+  .node-root .pin.right { right: -14px; }
+
+  .col-hubs { flex: 0 0 auto; width: 176px; display: flex; flex-direction: column; justify-content: space-around; }
+  .hub { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 6px; padding: 14px 16px; }
+  .hub .tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); }
+  .hub h3 { font-size: 0.95rem; letter-spacing: 0.02em; margin-top: 2px; }
+  .hub .pin { position: absolute; top: 50%; width: 14px; height: 2px; background: var(--ink); transform: translateY(-50%); }
+  .hub .pin.left { left: -14px; }
+  .hub .pin.right { right: -14px; }
+
+  .col-leaves { flex: 1 1 auto; display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .leaf-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .branch { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .leaf-group.build .branch { background: linear-gradient(var(--wash-build), var(--wash-build)), var(--surface); }
+  .leaf-group.deep .branch { background: linear-gradient(var(--wash-deep), var(--wash-deep)), var(--surface); }
+  .branch .pin { position: absolute; top: 26px; left: -14px; width: 14px; height: 2px; background: var(--line); }
+
+  .branch-toggle { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: none; border: none; cursor: pointer; text-align: left; }
+  .branch-toggle .tag { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; font-weight: 600; padding: 3px 7px; border-radius: 3px; white-space: nowrap; }
+  .leaf-group.build .tag { color: var(--tag-build); border: 1px solid var(--tag-build); }
+  .leaf-group.deep .tag { color: var(--tag-deep); border: 1px solid var(--tag-deep); }
+  .branch-toggle .title { font-family: var(--font-mono); font-weight: 600; font-size: 0.92rem; flex: 1; }
+  .branch-toggle .chev { width: 18px; height: 18px; flex: 0 0 auto; color: var(--muted); transition: transform 0.22s ease; }
+  .branch.expanded .branch-toggle .chev { transform: rotate(90deg); color: var(--accent); }
+
+  .detail-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .branch.expanded .detail-wrap { grid-template-rows: 1fr; }
+  .detail-inner { overflow: hidden; }
+  .detail { padding: 14px 18px 18px 48px; border-top: 1px solid var(--line); margin-top: 1px; }
+  .detail p { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink); }
+  .detail p:last-child { margin-bottom: 0; }
+  .detail ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .detail ul:last-child { margin-bottom: 0; }
+  .detail li { position: relative; padding-left: 16px; font-size: 0.95rem; color: var(--ink); }
+  .detail li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .detail code { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  .detail .why { font-size: 0.88rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 10px; }
+  .detail .why strong { color: var(--ink); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .detail dl { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+  .detail dt.q { font-family: var(--font-mono); font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+  .detail dt.q::before { content: "Q — "; color: var(--accent); }
+  .detail dd.a { margin: 6px 0 0; font-size: 0.96rem; color: var(--muted); }
+
+  .legend { max-width: 1240px; margin: 0 auto; padding: 0 28px 48px; display: flex; flex-wrap: wrap; gap: 22px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.02em; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend .dot.build { background: var(--tag-build); }
+  .legend .dot.deep { background: var(--tag-deep); }
+  .legend .dot.accent { background: var(--accent); }
+
+  @media (max-width: 900px) {
+    .connectors { display: none; }
+    .canvas { flex-direction: column; gap: 28px; }
+    .col-root { justify-content: flex-start; }
+    .node-root { width: auto; }
+    .node-root .pin, .hub .pin, .branch .pin { display: none; }
+    .col-hubs { width: auto; flex-direction: row; gap: 14px; }
+    .hub { flex: 1 1 0; }
+    .col-leaves { gap: 28px; }
+    .detail { padding-left: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <div>
+    <span class="kicker">Vicinia — Field Notes</span>
+    <h1>Day 6 Build Map — Cloudinary &amp; Live Bug Hunt</h1>
+    <p class="sub">Stage 18, round 9: a real CDN upload pipeline, a merchant cancel button, and three bugs found the hard way — one traced straight into Postgres, one traced into a CSS grid track, one caught by a test doing exactly its job.</p>
+  </div>
+  <div class="stamp mono">
+    <span class="k">Sheet</span><span class="v">Stage 18 · R9</span>
+    <span class="k">Date</span><span class="v">2026-08-26</span>
+    <span class="k">Repo</span><span class="v">Aditya99k/vicinia</span>
+  </div>
+</header>
+
+<main class="board">
+  <div class="canvas" id="canvas">
+    <svg class="connectors" id="connectors" role="img" aria-label="Mind map connecting the Vicinia Day 6 root node to a Build Log branch and a Deep Dives branch about Stage 18 round 9's Cloudinary integration and bug fixes."></svg>
+
+    <div class="col-root">
+      <div class="node-root" id="node-root">
+        <span class="pin right"></span>
+        <span class="eyebrow">// today</span>
+        <h2>Vicinia<br>Round 9</h2>
+      </div>
+    </div>
+
+    <div class="col-hubs">
+      <div class="hub" id="node-hub-build">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// build log</span>
+        <h3>What shipped</h3>
+      </div>
+      <div class="hub" id="node-hub-deep">
+        <span class="pin left"></span><span class="pin right"></span>
+        <span class="tag">// deep dives</span>
+        <h3>Why it works</h3>
+      </div>
+    </div>
+
+    <div class="col-leaves">
+
+      <div class="leaf-group build">
+        <article class="branch" id="node-c1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c1" aria-expanded="false">
+            <span class="tag">01</span>
+            <span class="title">Cloudinary — signed uploads, real credentials</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c1"><div class="detail-inner"><div class="detail">
+            <p>Product photos previously came from nowhere real — placeholder art keyed off category. catalog-service now exposes <code>GET /api/catalog/uploads/sign</code>, which mints a short-lived HMAC-SHA1 signature over the sorted upload params plus the account's api secret (Cloudinary's own documented algorithm). The browser uploads the actual image bytes straight to <code>api.cloudinary.com</code> — never through our backend — using that signature. The merchant's "request a new product" form now has a real photo picker wired to it, and the uploaded <code>secure_url</code> flows into the same <code>images</code> field the admin-approval pipeline already understood.</p>
+            <p>Verified for real, not just compiled: signed a live request with the user's actual Cloudinary credentials, uploaded a genuine test PNG straight to <code>api.cloudinary.com/v1_1/yhmq6jbb/image/upload</code> with that signature, and got back a real <code>secure_url</code> — the full path, not a mock of it.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c2" aria-expanded="false">
+            <span class="tag">02</span>
+            <span class="title">Customer geolocation → rider navigation</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c2"><div class="detail-inner"><div class="detail">
+            <p>Address capture now offers "Use my current location" ( <code>navigator.geolocation</code>, same pattern already used for merchant store setup and rider go-online). That lat/lng rides along with the address, and at checkout it's snapshotted directly onto the order — a deliberate copy, not a live join back to the address table, matching how cart line items already snapshot price and name at add-time rather than re-reading the product live. The delivery partner's active-task card now renders a "Navigate to drop-off" link straight into Google Maps directions whenever that snapshot exists.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c3" aria-expanded="false">
+            <span class="tag">03</span>
+            <span class="title">Merchant cancel + live pickup substatus</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c3"><div class="detail-inner"><div class="detail">
+            <p>Two new legal transitions — <code>READY_FOR_PICKUP → CANCELLED</code> and <code>DELIVERY_ASSIGNED → CANCELLED</code> — give a merchant an escape hatch when no rider ever collects a ready order. <code>POST /api/orders/{id}/merchant-cancel</code> releases the inventory reservation and publishes <code>order.cancelled</code>, which merchant-service's existing consumer now also handles (branching on <code>eventType</code> inside the one listener it already had, rather than adding a second listener on the same topic and groupId — that split would have handed each event to only one of the two consumers, non-deterministically). The queue itself now also surfaces order-service's own live status while a task sits at READY — "awaiting pickup" vs. "rider assigned" vs. "picked up, out for delivery" — instead of one static label the whole time.</p>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c4" aria-expanded="false">
+            <span class="tag">04</span>
+            <span class="title">Notification clear-all, product click-through, richer settlements</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c4"><div class="detail-inner"><div class="detail">
+            <ul>
+              <li>New <code>DELETE /api/notifications/mine</code>, wired to a "Clear all" button in the bell dropdown for every role.</li>
+              <li>Cart and order item rows now link through to the same product detail page search already reaches, instead of being inert rows.</li>
+              <li>The merchant settlement "Entries" tab fetches each order's full detail and renders real item photos/names alongside gross/commission/net, instead of a bare total per row.</li>
+            </ul>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-c5">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="c5" aria-expanded="false">
+            <span class="tag">05</span>
+            <span class="title">The hero banner becomes a carousel — twice</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-c5"><div class="detail-inner"><div class="detail">
+            <p>The static "Hi &lt;name&gt;" banner is now three auto-scrolling slides (greeting, quick-delivery pitch, shop-local pitch), each with its own illustration, pausing on hover. First attempt used a flex track three times the container's width, translated left with <code>transform</code> — visually correct in isolation, but it broke the page layout around it (see Deep Dive 02). Rebuilt as cross-fading, absolutely-positioned slides that are never wider than the carousel itself.</p>
+          </div></div></div>
+        </article>
+      </div>
+
+      <div class="leaf-group deep">
+        <article class="branch" id="node-d1">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d1" aria-expanded="false">
+            <span class="tag">postgres</span>
+            <span class="title">The cancel button that silently did nothing</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d1"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">The merchant cancel endpoint returned success, order-service showed CANCELLED — so why did the order stay stuck in the merchant's queue?</dt><dd class="a">The frontend was innocent. Querying <code>merchant_db</code> directly showed the task still sitting at <code>READY</code>, and the merchant-service log had the real answer: <code>ERROR ... constraint [merchant_order_tasks_status_check]</code>, thrown from exactly the new <code>cancelFromOrderEvent</code> method, retried four times, then dead-lettered. Hibernate had generated that CHECK constraint — <code>status IN ('PENDING_ACCEPTANCE','ACCEPTED','REJECTED','READY','COMPLETED')</code> — back when the table was first created, before <code>CANCELLED</code> existed as a value. <code>ddl-auto: update</code> only ever adds tables and columns it doesn't recognize; it never goes back and rewrites a constraint that's already there, even after the Java enum grows a new case. The Kafka event was arriving correctly, being consumed correctly, and failing at the very last step — a database refusing a value the application layer considered perfectly legal.</dd></div>
+              <div><dt class="q">Was this a code bug, then?</dt><dd class="a">No — and that distinction mattered for the fix. This dev database's table predates the enum change; a brand-new environment (CI's Testcontainers, a fresh clone) creates the table from the current enum and never hits this. The fix was operational: drop and recreate the constraint with <code>CANCELLED</code> included, then hand-correct the two orders that had already gotten stuck mid-cancel while the bug was live. No Java changed. The lesson that does carry forward: a passing <code>ddl-auto: update</code> startup is not proof a schema is current — it only proves nothing NEW was needed, which is a different claim than nothing changed.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d2">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d2" aria-expanded="false">
+            <span class="tag">css</span>
+            <span class="title">Why a wider-than-100% child pushed the sidebar off-screen</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d2"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">The carousel's own wrapper had overflow: hidden — so how did a 300%-wide inner track manage to blow out a grid column two levels up?</dt><dd class="a"><code>overflow: hidden</code> only controls what's painted, not what's measured. <code>.home-grid</code> was <code>grid-template-columns: 1fr 320px</code> — a bare <code>1fr</code>, whose automatic minimum width defaults to its content's min-content size unless told otherwise. The flex track inside the carousel, laid out as three full-width cards side by side with <code>flex-wrap: nowrap</code>, has a min-content width of roughly three card-widths — and that measurement propagates up through the layout tree regardless of a nested element clipping the paint. The grid column grew to accommodate it, and the 320px sidebar got pushed clean off the viewport. Visually this read as "everything zoomed in," because the whole first column — hero card included — was now rendering at roughly 3x its intended width.</dd></div>
+              <div><dt class="q">Why switch to absolute positioning instead of just fixing the width somewhere?</dt><dd class="a">Because the real fix has two independent halves, and skipping either one leaves the bug latent. <code>minmax(0, 1fr)</code> on the grid column caps the automatic minimum at zero — that alone stops today's blowout. But leaving the carousel's own mechanism as a 300%-wide translated track means the next person to add a fourth slide, or nest it one level deeper, can reintroduce the exact same class of bug. Cross-fading, absolutely-positioned slides have no element anywhere in the carousel that is ever wider than the carousel's own box — the failure mode isn't patched, it's structurally unavailable. Both changes shipped together on purpose.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d3">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d3" aria-expanded="false">
+            <span class="tag">testing</span>
+            <span class="title">CI failing here was the test working, not breaking</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d3"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">OrderStatusTransitionTest failed right after the merchant-cancel push — wasn't that the same test suite that already covered CANCELLED transitions?</dt><dd class="a">It covered the two CANCELLED transitions that existed when Stage 17 wrote it — from <code>CREATED</code>, from <code>CONFIRMED</code>, from <code>PREPARING</code>. That test's whole design (see Day 5's own deep dive on it) is a hand-maintained map of every legal <code>(from, to)</code> pair, asserted exhaustively against every possible pair the real enum can produce — which means the map is a second, independent copy of "what's legal" that has to be kept in sync with <code>OrderStatusTransition.java</code> by hand. Adding <code>READY_FOR_PICKUP → CANCELLED</code> and <code>DELIVERY_ASSIGNED → CANCELLED</code> to the production transition table without updating the test's own copy left the test asserting those two jumps should still throw — and CI caught exactly that gap, on the very next push.</dd></div>
+              <div><dt class="q">So this wasn't a flaky test or a CI infrastructure problem?</dt><dd class="a">No — <code>gh run view --log-failed</code> showed a clean <code>AssertionError</code> from the parameterized case, not a timeout or a Testcontainers flake. That's the useful signal an exhaustive-matrix test is built to give: a real behavior change that wasn't mirrored into the test's own oracle. The fix was one line per new transition, verified locally first (<code>mvn test -Dtest=OrderStatusTransitionTest</code>, clean target dirs, not a stale incremental build) before pushing — same discipline as every other CI fix this project has needed.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+
+        <article class="branch" id="node-d4">
+          <span class="pin"></span>
+          <button class="branch-toggle" data-target="d4" aria-expanded="false">
+            <span class="tag">security</span>
+            <span class="title">Why the image bytes never touch our own servers</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="detail-wrap" id="detail-d4"><div class="detail-inner"><div class="detail">
+            <dl>
+              <div><dt class="q">Why does catalog-service only ever hand out a signature, instead of accepting the file upload itself and forwarding it to Cloudinary?</dt><dd class="a">Proxying the upload would mean every product photo's bytes pass through our own Spring app twice — once in from the merchant's browser, once back out to Cloudinary — burning our own bandwidth and memory for a job a CDN already exists to do directly. The signed-upload pattern instead treats the backend purely as an authority: it knows the api secret and can vouch, for the next 300-ish seconds, that a specific set of upload parameters (folder, timestamp) is authorized — and Cloudinary, holding the same secret, can independently recompute that HMAC and agree. Nothing about the actual image ever needs to be trusted or inspected server-side to make that guarantee hold.</dd></div>
+              <div><dt class="q">Doesn't putting the api key in the browser leak it?</dt><dd class="a">The api <em>key</em> is meant to be public — Cloudinary's own docs treat it like a client id, not a secret. The api <em>secret</em> never leaves catalog-service; it's only ever used server-side to compute the signature, and <code>.env</code> (holding it, alongside the key and cloud name) stays git-ignored, same as every other credential in this project. What ships to the browser is the signature itself — a one-time-use token scoped to one specific upload request, not the key that could mint arbitrary future ones.</dd></div>
+            </dl>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="legend">
+  <span><span class="dot accent"></span> spine — root → hub</span>
+  <span><span class="dot build"></span> build log branch</span>
+  <span><span class="dot deep"></span> deep dives branch</span>
+  <span>Click any card to expand.</span>
+</footer>
+
+<script>
+(function () {
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var pairs = [
+    ['root', 'hub-build', 'spine'],
+    ['root', 'hub-deep', 'spine'],
+    ['hub-build', 'c1', 'build'], ['hub-build', 'c2', 'build'], ['hub-build', 'c3', 'build'],
+    ['hub-build', 'c4', 'build'], ['hub-build', 'c5', 'build'],
+    ['hub-deep', 'd1', 'deep'], ['hub-deep', 'd2', 'deep'], ['hub-deep', 'd3', 'deep'], ['hub-deep', 'd4', 'deep']
+  ];
+
+  function edgePoint(el, side, containerRect) {
+    var r = el.getBoundingClientRect();
+    var x = side === 'right' ? r.right : r.left;
+    var y = r.top + r.height / 2;
+    return { x: x - containerRect.left, y: y - containerRect.top };
+  }
+
+  function drawConnectors() {
+    if (window.innerWidth < 900) { svg.innerHTML = ''; return; }
+    var rect = canvas.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    var out = '';
+    pairs.forEach(function (pair) {
+      var fromEl = document.getElementById('node-' + pair[0]);
+      var toEl = document.getElementById('node-' + pair[1]);
+      if (!fromEl || !toEl) return;
+      var p1 = edgePoint(fromEl, 'right', rect);
+      var p2 = edgePoint(toEl, 'left', rect);
+      var dx = Math.max(30, (p2.x - p1.x) * 0.5);
+      var d = 'M ' + p1.x + ' ' + p1.y +
+              ' C ' + (p1.x + dx) + ' ' + p1.y + ', ' +
+              (p2.x - dx) + ' ' + p2.y + ', ' +
+              p2.x + ' ' + p2.y;
+      out += '<path d="' + d + '" class="wire wire-' + pair[2] + '"></path>';
+    });
+    svg.innerHTML = out;
+  }
+
+  document.querySelectorAll('.branch-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var branch = btn.closest('.branch');
+      var expanded = branch.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  });
+
+  var scheduled = false;
+  function scheduleRedraw() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; drawConnectors(); });
+  }
+
+  new ResizeObserver(scheduleRedraw).observe(canvas);
+  window.addEventListener('resize', scheduleRedraw);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawConnectors); }
+  drawConnectors();
+})();
+</script>
+
+</body>
+</html>
