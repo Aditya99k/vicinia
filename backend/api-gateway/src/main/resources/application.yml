@@ -54,6 +54,15 @@ spring:
               # Pages assigns the project without needing to know it ahead
               # of time. A later custom domain is a one-line addition here.
               - "https://*.pages.dev"
+              # Cloudflare Quick Tunnels (no account needed) always land on
+              # this domain with a random subdomain per run — used as an
+              # interim public URL while Stage 20's real VM is blocked.
+              - "https://*.trycloudflare.com"
+              # The frontend's actual home now — Vercel, chosen over
+              # Cloudflare Pages for this deploy. *.vercel.app covers both
+              # the production URL and every preview-deploy URL Vercel
+              # generates per branch/PR.
+              - "https://*.vercel.app"
             allowedMethods:
               - GET
               - POST
