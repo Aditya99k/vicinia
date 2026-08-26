@@ -26,11 +26,16 @@ public class Address {
     private String pincode;
     private boolean isDefault;
 
+    /** Captured via the browser's geolocation when the customer taps "Use my current location" while adding the address — the delivery partner's own drop-off navigation link is built from this, not the free-text lines (which nothing can route to). Nullable: an address entered without it just has no navigable drop-off point. */
+    private Double latitude;
+    private Double longitude;
+
     protected Address() {
     }
 
     public Address(UUID userId, String label, String line1, String line2,
-                    String city, String state, String pincode, boolean isDefault) {
+                    String city, String state, String pincode, boolean isDefault,
+                    Double latitude, Double longitude) {
         this.userId = userId;
         this.label = label;
         this.line1 = line1;
@@ -39,6 +44,8 @@ public class Address {
         this.state = state;
         this.pincode = pincode;
         this.isDefault = isDefault;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public UUID getId() {
@@ -77,8 +84,17 @@ public class Address {
         return isDefault;
     }
 
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
     public void update(String label, String line1, String line2,
-                        String city, String state, String pincode, boolean isDefault) {
+                        String city, String state, String pincode, boolean isDefault,
+                        Double latitude, Double longitude) {
         this.label = label;
         this.line1 = line1;
         this.line2 = line2;
@@ -86,5 +102,7 @@ public class Address {
         this.state = state;
         this.pincode = pincode;
         this.isDefault = isDefault;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CheckCircleIcon, NavigationIcon } from './Icons';
 
 const emptyForm = {
   label: '',
@@ -8,19 +9,45 @@ const emptyForm = {
   state: '',
   pincode: '',
   isDefault: false,
+  latitude: null,
+  longitude: null,
 };
 
 export default function AddressFormModal({ initial, onClose, onSubmit, submitting, error }) {
   const [form, setForm] = useState(() => (initial ? { ...emptyForm, ...initial } : emptyForm));
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocationError('Your browser does not support location access.');
+      return;
+    }
+    setLocating(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        set('latitude', pos.coords.latitude);
+        set('longitude', pos.coords.longitude);
+        setLocating(false);
+      },
+      () => {
+        setLocationError('Could not get your location — enable location access and try again.');
+        setLocating(false);
+      }
+    );
   }
 
   function handleSubmit(e) {
     e.preventDefault();
     onSubmit(form);
   }
+
+  const hasLocation = form.latitude != null && form.longitude != null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -60,6 +87,24 @@ export default function AddressFormModal({ initial, onClose, onSubmit, submittin
             <label htmlFor="pincode">Pincode</label>
             <input id="pincode" value={form.pincode} onChange={(e) => set('pincode', e.target.value)} required />
           </div>
+
+          <div className="field">
+            <label>Precise location</label>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={useCurrentLocation} disabled={locating} style={{ alignSelf: 'flex-start' }}>
+              {locating ? (
+                <span className="spinner" />
+              ) : hasLocation ? (
+                <><CheckCircleIcon style={{ width: 14, height: 14, color: 'var(--success)' }} /> Location captured</>
+              ) : (
+                <><NavigationIcon style={{ width: 14, height: 14 }} /> Use my current location</>
+              )}
+            </button>
+            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>
+              Lets your delivery partner navigate straight to this address instead of just a text description.
+            </p>
+            {locationError && <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{locationError}</p>}
+          </div>
+
           <div className="checkbox-row">
             <input
               id="isDefault"

@@ -70,6 +70,17 @@ export function LogoutIcon(props) {
   );
 }
 
+export function ImageIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <circle cx="9" cy="10" r="1.7" />
+      <path d="m5.5 17.5 4.7-4.7a1.5 1.5 0 0 1 2.1 0l1.7 1.7" />
+      <path d="m13 16 2.4-2.4a1.5 1.5 0 0 1 2.1 0l2 2" />
+    </svg>
+  );
+}
+
 export function CheckCircleIcon(props) {
   return (
     <svg {...base} {...props}>

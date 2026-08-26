@@ -52,6 +52,10 @@ public class Order {
 
     private String cancellationReason;
 
+    /** A snapshot of the chosen delivery address's coordinates, taken at order-placement time (the frontend sends them straight from the address the customer already picked, same as merchant lat/lng's own snapshot-not-live-lookup pattern on the delivery-task side) — the delivery partner's own drop-off navigation link is built from this. Nullable: an address with no coordinates on file just leaves the order without a navigable drop-off point. */
+    private Double deliveryLatitude;
+    private Double deliveryLongitude;
+
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
@@ -98,6 +102,11 @@ public class Order {
         this.updatedAt = Instant.now();
     }
 
+    public void setDeliveryLocation(Double latitude, Double longitude) {
+        this.deliveryLatitude = latitude;
+        this.deliveryLongitude = longitude;
+    }
+
     // --- getters ---
 
     public UUID getId() {
@@ -134,6 +143,14 @@ public class Order {
 
     public String getCancellationReason() {
         return cancellationReason;
+    }
+
+    public Double getDeliveryLatitude() {
+        return deliveryLatitude;
+    }
+
+    public Double getDeliveryLongitude() {
+        return deliveryLongitude;
     }
 
     public PaymentMethod getPaymentMethod() {

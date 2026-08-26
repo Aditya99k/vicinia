@@ -33,8 +33,13 @@ public final class OrderStatusTransition {
         ALLOWED.put(CONFIRMED, EnumSet.of(MERCHANT_ACCEPTED, MERCHANT_REJECTED, CANCELLED));
         ALLOWED.put(MERCHANT_ACCEPTED, EnumSet.of(PREPARING));
         ALLOWED.put(PREPARING, EnumSet.of(READY_FOR_PICKUP, CANCELLED));
-        ALLOWED.put(READY_FOR_PICKUP, EnumSet.of(DELIVERY_ASSIGNED));
-        ALLOWED.put(DELIVERY_ASSIGNED, EnumSet.of(OUT_FOR_DELIVERY));
+        // CANCELLED from here on covers "no rider ever showed up to collect
+        // it" (Stage 18) — a merchant-initiated cancel, not a customer one;
+        // once OUT_FOR_DELIVERY there's no cancel path left, since this
+        // system only marks a rider's pickup and delivery together as one
+        // step (see OrderService.delivered's own comment).
+        ALLOWED.put(READY_FOR_PICKUP, EnumSet.of(DELIVERY_ASSIGNED, CANCELLED));
+        ALLOWED.put(DELIVERY_ASSIGNED, EnumSet.of(OUT_FOR_DELIVERY, CANCELLED));
         ALLOWED.put(OUT_FOR_DELIVERY, EnumSet.of(DELIVERED));
         ALLOWED.put(MERCHANT_REJECTED, EnumSet.of(REFUND_PENDING));
         ALLOWED.put(CANCELLED, EnumSet.of(REFUND_PENDING));

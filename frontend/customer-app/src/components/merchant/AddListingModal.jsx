@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { searchProducts, requestProduct } from '../../api/catalog';
 import { createListing } from '../../api/inventory';
+import { uploadProductImage } from '../../api/upload';
+import { ImageIcon } from '../Icons';
 
 export default function AddListingModal({ onClose, onCreated }) {
   const [mode, setMode] = useState('find'); // find | request-sent
@@ -14,6 +16,24 @@ export default function AddListingModal({ onClose, onCreated }) {
   const [error, setError] = useState('');
 
   const [requestForm, setRequestForm] = useState({ name: '', brand: '', category: '', description: '' });
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState('');
+
+  async function handleImagePick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    setImageError('');
+    try {
+      const url = await uploadProductImage(file);
+      setImageUrl(url);
+    } catch {
+      setImageError('Could not upload this image — try again.');
+    } finally {
+      setImageUploading(false);
+    }
+  }
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -49,7 +69,7 @@ export default function AddListingModal({ onClose, onCreated }) {
     setSubmitting(true);
     setError('');
     try {
-      await requestProduct({ ...requestForm, images: [], attributes: {} });
+      await requestProduct({ ...requestForm, images: imageUrl ? [imageUrl] : [], attributes: {} });
       setMode('request-sent');
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not submit this product request.');
@@ -147,9 +167,26 @@ export default function AddListingModal({ onClose, onCreated }) {
               <label htmlFor="rdesc">Description</label>
               <textarea id="rdesc" rows={2} value={requestForm.description} onChange={(e) => setRequestForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
+            <div className="field">
+              <label htmlFor="rimage">Product photo (optional)</label>
+              <label className="image-upload-drop" htmlFor="rimage">
+                {imageUploading ? (
+                  <span className="spinner" />
+                ) : imageUrl ? (
+                  <img src={imageUrl} alt="" className="image-upload-preview" />
+                ) : (
+                  <>
+                    <ImageIcon style={{ width: 20, height: 20 }} />
+                    <span>Upload a photo</span>
+                  </>
+                )}
+              </label>
+              <input id="rimage" type="file" accept="image/*" onChange={handleImagePick} style={{ display: 'none' }} />
+              {imageError && <div className="banner banner-error" style={{ marginTop: 8, marginBottom: 0 }}>{imageError}</div>}
+            </div>
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setMode('find')}>Back</button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
+              <button type="submit" className="btn btn-primary" disabled={submitting || imageUploading}>
                 {submitting ? <span className="spinner" /> : 'Submit for review'}
               </button>
             </div>

@@ -170,13 +170,13 @@ export default function OrderDetailPage() {
       <div className="card" style={{ marginBottom: 16 }}>
         {order.items.map((item) => (
           <div className="order-item-row" key={item.listingId}>
-            <div className="order-item-thumb">
+            <Link to={`/product/${item.productId}`} className="order-item-thumb">
               <ProductImage src={imageFor(item.productId)} name={item.productName} category={categoryFor(item.productId)} />
-            </div>
-            <div style={{ flex: 1 }}>
+            </Link>
+            <Link to={`/product/${item.productId}`} style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 13.5 }}>{item.productName}</div>
               <div className="muted">{formatMoney(item.unitPrice)} × {item.quantity}</div>
-            </div>
+            </Link>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontWeight: 700 }}>{formatMoney(item.lineTotal)}</span>
               {order.status === 'DELIVERED' && !reviewedIds.has(item.productId) && (

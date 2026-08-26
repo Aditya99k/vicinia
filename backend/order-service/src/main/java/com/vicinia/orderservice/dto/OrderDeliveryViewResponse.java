@@ -19,9 +19,14 @@ public record OrderDeliveryViewResponse(
         UUID orderId,
         BigDecimal totalAmount,
         PaymentMethod paymentMethod,
-        boolean paid
+        boolean paid,
+        Double dropoffLatitude,
+        Double dropoffLongitude
 ) {
     public static OrderDeliveryViewResponse from(Order order) {
-        return new OrderDeliveryViewResponse(order.getId(), order.getTotalAmount(), order.getPaymentMethod(), order.isPaid());
+        return new OrderDeliveryViewResponse(
+                order.getId(), order.getTotalAmount(), order.getPaymentMethod(), order.isPaid(),
+                order.getDeliveryLatitude(), order.getDeliveryLongitude()
+        );
     }
 }

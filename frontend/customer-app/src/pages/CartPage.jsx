@@ -90,17 +90,17 @@ export default function CartPage() {
         <div className="cart-items card">
           {items.map((item) => (
             <div className="cart-item" key={item.listingId}>
-              <div className="cart-item-thumb">
+              <Link to={`/product/${item.productId}`} className="cart-item-thumb">
                 <ProductImage src={imageFor(item.productId)} name={item.productName} category={categoryFor(item.productId)} />
-              </div>
-              <div className="cart-item-body">
+              </Link>
+              <Link to={`/product/${item.productId}`} className="cart-item-body">
                 <div className="name">{item.productName}</div>
                 {item.available ? (
                   <div className="muted">{formatMoney(item.price)} each</div>
                 ) : (
                   <div className="unavailable">No longer available</div>
                 )}
-              </div>
+              </Link>
               {item.available && (
                 <div className="qty-stepper">
                   <button onClick={() => handleQty(item.listingId, item.quantity - 1)} disabled={busyListingId === item.listingId}>

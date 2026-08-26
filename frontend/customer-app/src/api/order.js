@@ -1,7 +1,10 @@
 import { apiClient } from './client';
 
-export function placeOrder({ couponCode, paymentMethod }) {
-  return apiClient.post('/api/orders', { couponCode: couponCode || null, paymentMethod }).then((r) => r.data);
+export function placeOrder({ couponCode, paymentMethod, deliveryLatitude, deliveryLongitude }) {
+  return apiClient.post('/api/orders', {
+    couponCode: couponCode || null, paymentMethod,
+    deliveryLatitude: deliveryLatitude ?? null, deliveryLongitude: deliveryLongitude ?? null,
+  }).then((r) => r.data);
 }
 
 export function myOrders() {
@@ -14,6 +17,10 @@ export function getOrder(id) {
 
 export function cancelOrder(id, reason) {
   return apiClient.post(`/api/orders/${id}/cancel`, { reason }).then((r) => r.data);
+}
+
+export function merchantCancelOrder(id, reason) {
+  return apiClient.post(`/api/orders/${id}/merchant-cancel`, { reason }).then((r) => r.data);
 }
 
 export function getOrderForMerchant(id) {

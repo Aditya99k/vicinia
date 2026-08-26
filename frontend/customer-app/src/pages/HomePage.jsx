@@ -5,7 +5,7 @@ import { getProfile, listAddresses } from '../api/user';
 import { getCategories } from '../api/catalog';
 import { nearby } from '../api/merchant';
 import { CheckCircleIcon, ChevronRightIcon, ClockIcon, MapPinIcon, NavigationIcon, PackageIcon } from '../components/Icons';
-import { GroceryBagIllustration, StorefrontIllustration } from '../components/Illustrations';
+import { DeliveryIllustration, GroceryBagIllustration, StorefrontIllustration } from '../components/Illustrations';
 import CategoryGlyphFor from '../components/CategoryGlyphFor';
 import { loadShops } from '../utils/loadShops';
 import { estimateDelivery } from '../utils/deliveryEstimate';
@@ -73,15 +73,42 @@ export default function HomePage() {
   return (
     <div className="home-grid">
       <div>
-        <div className="hero-card">
-          <div className="copy">
-            <span className="eyebrow">Good to see you</span>
-            <h1>Hi {displayName} 👋</h1>
-            <p style={{ marginTop: 8, fontSize: 13.5, color: 'var(--muted)', maxWidth: '42ch' }}>
-              Fresh groceries and everyday essentials from local stores — search for what you need to get started.
-            </p>
+        <div className="hero-carousel">
+          <div className="hero-carousel-track">
+            <div className="hero-card hero-slide">
+              <div className="copy">
+                <span className="eyebrow">Good to see you</span>
+                <h1>Hi {displayName} 👋</h1>
+                <p style={{ marginTop: 8, fontSize: 13.5, color: 'var(--muted)', maxWidth: '42ch' }}>
+                  Fresh groceries and everyday essentials from local stores — search for what you need to get started.
+                </p>
+              </div>
+              <GroceryBagIllustration />
+            </div>
+            <div className="hero-card hero-slide">
+              <div className="copy">
+                <span className="eyebrow">Quick delivery</span>
+                <h1>At your door in minutes</h1>
+                <p style={{ marginTop: 8, fontSize: 13.5, color: 'var(--muted)', maxWidth: '42ch' }}>
+                  Riders pick up straight from your nearest store — no long waits, no crowded aisles.
+                </p>
+              </div>
+              <DeliveryIllustration />
+            </div>
+            <div className="hero-card hero-slide">
+              <div className="copy">
+                <span className="eyebrow">Shop local</span>
+                <h1>Support stores near you</h1>
+                <p style={{ marginTop: 8, fontSize: 13.5, color: 'var(--muted)', maxWidth: '42ch' }}>
+                  Every order goes straight to a real neighbourhood shop, not a warehouse across town.
+                </p>
+              </div>
+              <StorefrontIllustration />
+            </div>
           </div>
-          <GroceryBagIllustration />
+          <div className="hero-carousel-dots">
+            <span /><span /><span />
+          </div>
         </div>
 
         {profilePending && (

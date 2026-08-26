@@ -9,6 +9,8 @@ public record AddressRequest(
         @NotBlank String city,
         @NotBlank String state,
         @NotBlank String pincode,
-        boolean isDefault
+        boolean isDefault,
+        Double latitude,
+        Double longitude
 ) {
 }

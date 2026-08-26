@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { myPayouts, mySettlements } from '../../api/settlement';
+import { getOrderForMerchant } from '../../api/order';
+import { useProductImages } from '../../hooks/useProductImages';
+import ProductImage from '../../components/ProductImage';
 import StatusBadge from '../../components/StatusBadge';
 import { EmptyBoxIllustration } from '../../components/Illustrations';
 import { formatDateTime, formatMoney } from '../../utils/format';
@@ -7,16 +10,27 @@ import { formatDateTime, formatMoney } from '../../utils/format';
 export default function MerchantSettlementsPage() {
   const [entries, setEntries] = useState([]);
   const [payouts, setPayouts] = useState([]);
+  const [orderDetails, setOrderDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('entries');
 
   useEffect(() => {
     Promise.allSettled([mySettlements(), myPayouts()]).then(([e, p]) => {
-      if (e.status === 'fulfilled') setEntries(e.value);
+      if (e.status === 'fulfilled') {
+        setEntries(e.value);
+        e.value.forEach((entry) => {
+          getOrderForMerchant(entry.orderId)
+            .then((full) => setOrderDetails((d) => ({ ...d, [entry.orderId]: full })))
+            .catch(() => {});
+        });
+      }
       if (p.status === 'fulfilled') setPayouts(p.value);
       setLoading(false);
     });
   }, []);
+
+  const allItems = Object.values(orderDetails).flatMap((o) => o.items);
+  const { imageFor, categoryFor } = useProductImages(allItems.map((i) => i.productId));
 
   const pendingTotal = entries.filter((e) => e.status === 'PENDING').reduce((s, e) => s + Number(e.net), 0);
 
@@ -47,16 +61,45 @@ export default function MerchantSettlementsPage() {
           <div className="empty-state"><EmptyBoxIllustration /><h3>No settlement entries yet</h3><p>These appear once an order is delivered.</p></div>
         ) : (
           <div className="order-list">
-            {entries.map((e) => (
-              <div className="order-row card" key={e.id}>
-                <div>
-                  <div className="order-row-id">Order #{e.orderId.slice(0, 8)}</div>
-                  <div className="muted">{formatDateTime(e.createdAt)} · gross {formatMoney(e.gross)} − commission {formatMoney(e.commission)}</div>
+            {entries.map((e) => {
+              const full = orderDetails[e.orderId];
+              return (
+                <div className="card merchant-order-card" key={e.id}>
+                  <div className="merchant-order-head">
+                    <div>
+                      <div className="order-row-id">Order #{e.orderId.slice(0, 8)}</div>
+                      <div className="muted">{formatDateTime(e.createdAt)}</div>
+                    </div>
+                    <StatusBadge status={e.status} />
+                  </div>
+
+                  {full ? (
+                    <div className="merchant-order-items">
+                      {full.items.map((item) => (
+                        <div className="merchant-order-item" key={item.listingId}>
+                          <div className="order-item-thumb">
+                            <ProductImage src={imageFor(item.productId)} name={item.productName} category={categoryFor(item.productId)} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{item.productName}</div>
+                            <div className="muted">{formatMoney(item.unitPrice)} × {item.quantity}</div>
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: 13 }}>{formatMoney(item.lineTotal)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="page-loading" style={{ padding: '10px 0' }}><span className="spinner" /></div>
+                  )}
+
+                  <div className="settlement-breakdown">
+                    <div className="summary-row"><span>Gross</span><span>{formatMoney(e.gross)}</span></div>
+                    <div className="summary-row discount"><span>Commission</span><span>−{formatMoney(e.commission)}</span></div>
+                    <div className="summary-row total"><span>Net</span><span>{formatMoney(e.net)}</span></div>
+                  </div>
                 </div>
-                <div className="order-row-total">{formatMoney(e.net)}</div>
-                <StatusBadge status={e.status} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       ) : payouts.length === 0 ? (

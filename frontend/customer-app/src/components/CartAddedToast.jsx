@@ -16,9 +16,23 @@ export default function CartAddedToast() {
   const { imageFor, categoryFor } = useProductImages(lastAdded ? [lastAdded.item.productId] : []);
 
   useEffect(() => {
-    if (!lastAdded) return;
+    if (!lastAdded) {
+      setVisible(false);
+      return;
+    }
+    // Guards against this component remounting (e.g. AppLayout unmounts on
+    // /login and remounts on the next role's session) with `lastAdded`
+    // still holding a real but old value from before — a mount-time effect
+    // runs regardless of whether the dependency "changed" from a previous
+    // render, so without this check a stale add would flash the toast
+    // right back up in a different account's session.
+    const remaining = VISIBLE_MS - (Date.now() - lastAdded.at);
+    if (remaining <= 0) {
+      setVisible(false);
+      return;
+    }
     setVisible(true);
-    const timer = setTimeout(() => setVisible(false), VISIBLE_MS);
+    const timer = setTimeout(() => setVisible(false), remaining);
     return () => clearTimeout(timer);
   }, [lastAdded]);
 

@@ -85,6 +85,17 @@ public class MerchantOrderService {
         });
     }
 
+    /** From order-service's order.cancelled event — reached by the merchant's own cancel option (a READY order no rider ever collected) rather than by any state change on this side. Idempotent (only transitions while still READY, mirroring completeFromDelivery above). */
+    public void cancelFromOrderEvent(UUID orderId) {
+        taskRepository.findByOrderId(orderId).ifPresent(task -> {
+            if (task.getStatus() != OrderTaskStatus.READY) {
+                return;
+            }
+            task.transitionTo(OrderTaskStatus.CANCELLED);
+            taskRepository.save(task);
+        });
+    }
+
     private MerchantOrderTask getOwnedTask(UUID merchantId, UUID orderId) {
         MerchantOrderTask task = taskRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new MerchantOrderTaskNotFoundException(orderId));

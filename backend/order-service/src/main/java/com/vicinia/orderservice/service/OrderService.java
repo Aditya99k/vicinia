@@ -87,7 +87,7 @@ public class OrderService {
 
         PaymentMethod method = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.WALLET;
 
-        Order order = createOrder(userId, cart, method);
+        Order order = createOrder(userId, cart, method, request.deliveryLatitude(), request.deliveryLongitude());
         eventPublisher.publishCreated(order.getId(), userId);
 
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
@@ -272,8 +272,9 @@ public class OrderService {
     /**
      * Only reachable, pre-delivery states per BUILD_TRACKER's "cancel order
      * endpoint (pre-delivery states only)" — the transition guard itself
-     * enforces this (CREATED/CONFIRMED/PREPARING -> CANCELLED is legal,
-     * everything past READY_FOR_PICKUP is not). Inventory release is a
+     * enforces this (CREATED/CONFIRMED/PREPARING -> CANCELLED is legal, as
+     * is READY_FOR_PICKUP/DELIVERY_ASSIGNED for the merchant-initiated path
+     * below; everything past that point is not). Inventory release is a
      * direct synchronous call (inventory-service doesn't consume
      * order-events — §7's table doesn't list it as a dependency); the
      * refund is deliberately event-driven instead (order.cancelled ->
@@ -294,10 +295,34 @@ public class OrderService {
         return saved;
     }
 
+    /**
+     * Stage 18: the merchant's own escape hatch when a prepared order just
+     * sits READY_FOR_PICKUP (or has a rider ASSIGNED but they never
+     * actually collect it) — same compensating actions as the customer's
+     * own cancel above (inventory release, event-driven refund), just
+     * scoped by merchantId instead of userId and reachable from a later
+     * pair of statuses. Publishing order.cancelled here also reaches
+     * merchant-service's own consumer, which clears the now-stale task out
+     * of that merchant's queue.
+     */
+    public Order cancelByMerchant(UUID orderId, UUID merchantId, String reason) {
+        Order order = getByIdForMerchant(orderId, merchantId);
+        order.transitionTo(OrderStatus.CANCELLED);
+        order.setCancellationReason(reason);
+        Order saved = orderRepository.save(order);
+
+        inventoryClient.release(order.getId());
+        eventPublisher.publishCancelled(order.getId(), order.getUserId(), order.getTotalAmount());
+
+        return saved;
+    }
+
     // --- small, single-save steps (see class comment for why each is exactly one save() call) ---
 
-    Order createOrder(UUID userId, CartClient.CartView cart, PaymentMethod paymentMethod) {
+    Order createOrder(UUID userId, CartClient.CartView cart, PaymentMethod paymentMethod,
+                       Double deliveryLatitude, Double deliveryLongitude) {
         Order order = new Order(userId, cart.merchantId(), cart.subtotal(), paymentMethod);
+        order.setDeliveryLocation(deliveryLatitude, deliveryLongitude);
         for (CartClient.CartLine line : cart.items()) {
             order.addItem(new OrderItem(line.listingId(), line.productId(), line.productName(), line.price(), line.quantity()));
         }

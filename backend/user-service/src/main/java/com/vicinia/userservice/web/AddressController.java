@@ -45,7 +45,8 @@ public class AddressController {
     public ResponseEntity<AddressResponse> create(@RequestHeader(HeaderNames.USER_ID) String userId,
                                                     @Valid @RequestBody AddressRequest request) {
         Address address = new Address(UUID.fromString(userId), request.label(), request.line1(), request.line2(),
-                request.city(), request.state(), request.pincode(), request.isDefault());
+                request.city(), request.state(), request.pincode(), request.isDefault(),
+                request.latitude(), request.longitude());
         address = addressRepository.save(address);
         if (request.isDefault()) {
             addressRepository.clearDefaultForOthers(UUID.fromString(userId), address.getId());
@@ -63,7 +64,8 @@ public class AddressController {
             throw new AddressNotFoundException(addressId);
         }
         address.update(request.label(), request.line1(), request.line2(),
-                request.city(), request.state(), request.pincode(), request.isDefault());
+                request.city(), request.state(), request.pincode(), request.isDefault(),
+                request.latitude(), request.longitude());
         addressRepository.save(address);
         if (request.isDefault()) {
             addressRepository.clearDefaultForOthers(UUID.fromString(userId), address.getId());

@@ -3,9 +3,11 @@ package com.vicinia.catalogservice.web;
 import com.vicinia.common.security.HeaderNames;
 import com.vicinia.catalogservice.domain.Product;
 import com.vicinia.catalogservice.dto.CategoryResponse;
+import com.vicinia.catalogservice.dto.CloudinarySignatureResponse;
 import com.vicinia.catalogservice.dto.ProductRequest;
 import com.vicinia.catalogservice.dto.ProductResponse;
 import com.vicinia.catalogservice.service.CatalogService;
+import com.vicinia.catalogservice.service.CloudinaryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +33,11 @@ import java.util.List;
 public class CatalogController {
 
     private final CatalogService catalogService;
+    private final CloudinaryService cloudinaryService;
 
-    public CatalogController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService, CloudinaryService cloudinaryService) {
         this.catalogService = catalogService;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @GetMapping("/products/search")
@@ -62,5 +66,11 @@ public class CatalogController {
     @GetMapping("/categories")
     public List<CategoryResponse> categories() {
         return catalogService.listCategories().stream().map(CategoryResponse::from).toList();
+    }
+
+    /** Any authenticated caller (merchants requesting a new product's photo, in practice) — signing alone can't do anything harmful, it only lets the browser's own next upload call count against our Cloudinary quota. */
+    @GetMapping("/uploads/sign")
+    public CloudinarySignatureResponse signUpload(@RequestHeader(HeaderNames.USER_ID) String userId) {
+        return cloudinaryService.signUpload();
     }
 }

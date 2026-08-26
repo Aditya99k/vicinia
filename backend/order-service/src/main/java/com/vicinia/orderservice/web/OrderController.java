@@ -76,4 +76,12 @@ public class OrderController {
                                  @Valid @RequestBody CancelOrderRequest request) {
         return OrderResponse.from(orderService.cancel(id, UUID.fromString(userId), request.reason()));
     }
+
+    /** The merchant's own cancel — for a prepared order no rider ever collected, scoped by merchantId instead of customer userId. */
+    @PostMapping("/{id}/merchant-cancel")
+    public OrderResponse merchantCancel(@RequestHeader(HeaderNames.USER_ID) String userId,
+                                         @PathVariable UUID id,
+                                         @Valid @RequestBody CancelOrderRequest request) {
+        return OrderResponse.from(orderService.cancelByMerchant(id, UUID.fromString(userId), request.reason()));
+    }
 }

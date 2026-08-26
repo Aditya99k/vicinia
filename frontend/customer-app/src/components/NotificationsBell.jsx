@@ -26,12 +26,23 @@ const TONES = {
 };
 
 export default function NotificationsBell() {
-  const { notifications, loading, unseenCount, markSeen, lastSeen } = useNotifications();
+  const { notifications, loading, unseenCount, markSeen, clearAll, lastSeen } = useNotifications();
   const { auth } = useAuth();
   const role = primaryRole(auth);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const wrapRef = useRef(null);
+
+  async function handleClearAll(e) {
+    e.stopPropagation();
+    setClearing(true);
+    try {
+      await clearAll();
+    } finally {
+      setClearing(false);
+    }
+  }
 
   useEffect(() => {
     function onOutsideClick(e) {
@@ -63,7 +74,14 @@ export default function NotificationsBell() {
 
       {open && (
         <div className="notifications-dropdown">
-          <div className="notifications-header">Notifications</div>
+          <div className="notifications-header">
+            <span>Notifications</span>
+            {notifications.length > 0 && (
+              <button type="button" className="notifications-clear-btn" onClick={handleClearAll} disabled={clearing}>
+                {clearing ? <span className="spinner" /> : 'Clear all'}
+              </button>
+            )}
+          </div>
           {loading ? (
             <div className="search-suggestion-loading"><span className="spinner" /></div>
           ) : notifications.length === 0 ? (

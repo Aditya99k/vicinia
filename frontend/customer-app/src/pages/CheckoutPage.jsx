@@ -57,7 +57,10 @@ export default function CheckoutPage() {
     setError('');
     setPlacing(true);
     try {
-      const order = await placeOrder({ couponCode, paymentMethod: method });
+      const order = await placeOrder({
+        couponCode, paymentMethod: method,
+        deliveryLatitude: defaultAddress?.latitude, deliveryLongitude: defaultAddress?.longitude,
+      });
 
       if (method === 'RAZORPAY' && order.razorpayOrderId) {
         await loadRazorpayScript();

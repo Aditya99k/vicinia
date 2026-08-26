@@ -14,6 +14,11 @@ export function CartProvider({ children }) {
   const refresh = useCallback(async () => {
     if (!isAuthenticated || primaryRole(auth) !== 'CUSTOMER') {
       setCart(null);
+      // A stale "added to cart" toast has no business surviving into
+      // another role's session (or back into the same customer's next
+      // session) — this is the same account-switch leak useNotifications
+      // had to guard against, just for cart state instead of localStorage.
+      setLastAdded(null);
       return;
     }
     setLoading(true);

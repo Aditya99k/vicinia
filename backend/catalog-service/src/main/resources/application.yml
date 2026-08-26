@@ -47,3 +47,14 @@ management:
   endpoint:
     health:
       show-details: always
+
+vicinia:
+  # Merchant product-image uploads (Stage 18) go straight from the browser
+  # to Cloudinary, signed here — see CloudinaryService. Free-tier signup at
+  # https://cloudinary.com; empty defaults mean uploads simply fail closed
+  # (a real error from Cloudinary's own API, not a startup crash) until
+  # these are set in .env.
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}

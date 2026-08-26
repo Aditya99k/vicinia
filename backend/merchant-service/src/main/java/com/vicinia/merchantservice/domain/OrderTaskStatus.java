@@ -7,12 +7,15 @@ package com.vicinia.merchantservice.domain;
  * stays visible in the merchant's own queue (Stage 18) so whoever's at the
  * counter can verify a rider's pickup against the order id — it only
  * leaves once COMPLETED, driven by delivery-service's own delivery.delivered
- * event, not by any action the merchant takes here.
+ * event, not by any action the merchant takes here — or CANCELLED, driven
+ * by order-service's order.cancelled event when the merchant used their
+ * own cancel option on a READY order no rider ever collected.
  */
 public enum OrderTaskStatus {
     PENDING_ACCEPTANCE,
     ACCEPTED,
     REJECTED,
     READY,
-    COMPLETED
+    COMPLETED,
+    CANCELLED
 }

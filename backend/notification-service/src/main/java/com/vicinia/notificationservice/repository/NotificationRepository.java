@@ -10,4 +10,6 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     boolean existsByEventId(String eventId);
 
     List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(String recipientUserId);
+
+    void deleteByRecipientUserId(String recipientUserId);
 }

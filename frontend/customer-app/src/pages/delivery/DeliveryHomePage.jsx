@@ -260,6 +260,17 @@ export default function DeliveryHomePage() {
             </div>
           )}
 
+          {orderInfo?.dropoffLatitude != null && orderInfo?.dropoffLongitude != null && (
+            <a
+              className="navigate-dropoff-link"
+              href={`https://www.google.com/maps/dir/?api=1&destination=${orderInfo.dropoffLatitude},${orderInfo.dropoffLongitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <NavigationIcon style={{ width: 14, height: 14 }} /> Navigate to drop-off
+            </a>
+          )}
+
           <div className="merchant-order-actions" style={{ marginTop: 14 }}>
             {activeTask.status === 'ASSIGNED' && (
               <button className="btn btn-secondary btn-sm" onClick={handleRejectTask} disabled={acting}>Reject</button>

@@ -29,4 +29,9 @@ public class NotificationService {
     public List<Notification> mine(String recipientUserId) {
         return repository.findByRecipientUserIdOrderByCreatedAtDesc(recipientUserId);
     }
+
+    /** "Clear all" is a real delete, not a read-flag flip — there is no read/unread state to flip (see Notification's own class comment); the bell's unseen-count is entirely client-side (useNotifications' localStorage marker), so once cleared there's simply nothing left to show at all, for any role. */
+    public void clearMine(String recipientUserId) {
+        repository.deleteByRecipientUserId(recipientUserId);
+    }
 }

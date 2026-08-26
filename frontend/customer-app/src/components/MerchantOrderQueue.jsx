@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { acceptOrder, getMe, pendingOrders, readyOrder, rejectOrder } from '../api/merchant';
-import { getOrderForMerchant } from '../api/order';
+import { getOrderForMerchant, merchantCancelOrder } from '../api/order';
 import { useProductImages } from '../hooks/useProductImages';
 import StatusBadge from './StatusBadge';
 import ProductImage from './ProductImage';
@@ -12,6 +12,15 @@ import { useActionDialog } from '../hooks/useActionDialog';
 
 const POLL_MS = 8000;
 const DETAIL_STATUSES = new Set(['PENDING_ACCEPTANCE', 'ACCEPTED', 'READY']);
+// order-service's own live status, surfaced only while the merchant-service
+// task sits at READY — this is what actually tells the merchant whether a
+// rider has shown up yet, since the task itself stays "READY" throughout.
+const PICKUP_SUBSTATUS_LABEL = {
+  READY_FOR_PICKUP: 'Awaiting rider pickup',
+  DELIVERY_ASSIGNED: 'Rider assigned — on the way to collect',
+  OUT_FOR_DELIVERY: 'Picked up — out for delivery',
+  DELIVERED: 'Delivered',
+};
 
 /** The merchant's live order queue — lives on the dashboard (their landing page) so incoming orders need no extra click to reach. */
 export default function MerchantOrderQueue() {
@@ -114,6 +123,23 @@ export default function MerchantOrderQueue() {
     }
   }
 
+  async function handleCancel(orderId) {
+    const reason = await promptText('Reason for cancelling this order?', { title: 'Cancel order', placeholder: 'e.g. No rider picked it up in time' });
+    if (reason === null) return;
+    setBusyId(orderId);
+    setError('');
+    try {
+      await merchantCancelOrder(orderId, reason || 'Not picked up by any rider');
+      flash(orderId);
+      showToast(<CheckCircleIcon style={{ width: 16, height: 16 }} />, 'Order cancelled', `Order #${orderId.slice(0, 8)}`);
+      load(true);
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Could not cancel this order.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div id="order-queue">
       {dialog}
@@ -204,10 +230,17 @@ export default function MerchantOrderQueue() {
                     </button>
                   )}
                   {o.status === 'READY' && (
-                    <span className="pickup-waiting-badge">
-                      <TruckIcon style={{ width: 14, height: 14 }} />
-                      Awaiting rider pickup — verify against order #{o.orderId.slice(0, 8)}
-                    </span>
+                    <>
+                      <span className="pickup-waiting-badge">
+                        <TruckIcon style={{ width: 14, height: 14 }} />
+                        {PICKUP_SUBSTATUS_LABEL[full?.status] || 'Awaiting rider pickup'} — verify against order #{o.orderId.slice(0, 8)}
+                      </span>
+                      {(full?.status === 'READY_FOR_PICKUP' || full?.status === 'DELIVERY_ASSIGNED') && (
+                        <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleCancel(o.orderId)} disabled={busyId === o.orderId}>
+                          {busyId === o.orderId ? <span className="spinner" /> : 'Cancel order'}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
