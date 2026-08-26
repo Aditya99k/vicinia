@@ -1,9 +1,10 @@
 import { apiClient } from './client';
 
-export function placeOrder({ couponCode, paymentMethod, deliveryLatitude, deliveryLongitude }) {
+export function placeOrder({ couponCode, paymentMethod, deliveryLatitude, deliveryLongitude, deliveryAddressLine }) {
   return apiClient.post('/api/orders', {
     couponCode: couponCode || null, paymentMethod,
     deliveryLatitude: deliveryLatitude ?? null, deliveryLongitude: deliveryLongitude ?? null,
+    deliveryAddressLine: deliveryAddressLine || null,
   }).then((r) => r.data);
 }
 

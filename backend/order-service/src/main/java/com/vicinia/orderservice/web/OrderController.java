@@ -63,11 +63,15 @@ public class OrderController {
         return OrderResponse.from(orderService.getByIdForMerchant(id, UUID.fromString(userId)));
     }
 
-    /** The delivery partner's slim view — payment amount/method/paid only, gated by the DELIVERY_MANAGE permission, not per-order ownership (see OrderDeliveryViewResponse). */
+    /** The delivery partner's slim view — payment info plus where to actually deliver, gated by the DELIVERY_MANAGE permission, not per-order ownership (see OrderDeliveryViewResponse). */
     @GetMapping("/{id}/delivery-view")
     public OrderDeliveryViewResponse getForDelivery(@RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions, @PathVariable UUID id) {
         PermissionUtil.require(permissions, "DELIVERY_MANAGE");
-        return OrderDeliveryViewResponse.from(orderService.getForDelivery(id));
+        var order = orderService.getForDelivery(id);
+        var contact = riderClient.contactSummary(order.getUserId());
+        return OrderDeliveryViewResponse.from(order,
+                contact.map(RiderClient.ContactSummary::fullName).orElse(null),
+                contact.map(RiderClient.ContactSummary::phone).orElse(null));
     }
 
     @PostMapping("/{id}/cancel")

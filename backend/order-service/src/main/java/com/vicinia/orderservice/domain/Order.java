@@ -56,6 +56,9 @@ public class Order {
     private Double deliveryLatitude;
     private Double deliveryLongitude;
 
+    /** A human-readable snapshot of the same chosen address (label, line1/2, city, pincode) — the coordinates above drive the map link, this drives the plain-text "deliver to" the rider actually reads. Same snapshot-not-live-lookup reasoning: the address on file can change or be deleted after the order ships. */
+    private String deliveryAddressLine;
+
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
@@ -102,9 +105,10 @@ public class Order {
         this.updatedAt = Instant.now();
     }
 
-    public void setDeliveryLocation(Double latitude, Double longitude) {
+    public void setDeliveryLocation(Double latitude, Double longitude, String addressLine) {
         this.deliveryLatitude = latitude;
         this.deliveryLongitude = longitude;
+        this.deliveryAddressLine = addressLine;
     }
 
     // --- getters ---
@@ -151,6 +155,10 @@ public class Order {
 
     public Double getDeliveryLongitude() {
         return deliveryLongitude;
+    }
+
+    public String getDeliveryAddressLine() {
+        return deliveryAddressLine;
     }
 
     public PaymentMethod getPaymentMethod() {

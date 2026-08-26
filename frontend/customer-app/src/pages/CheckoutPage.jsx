@@ -60,6 +60,9 @@ export default function CheckoutPage() {
       const order = await placeOrder({
         couponCode, paymentMethod: method,
         deliveryLatitude: defaultAddress?.latitude, deliveryLongitude: defaultAddress?.longitude,
+        deliveryAddressLine: defaultAddress
+          ? `${defaultAddress.label} — ${defaultAddress.line1}${defaultAddress.line2 ? ', ' + defaultAddress.line2 : ''}, ${defaultAddress.city} ${defaultAddress.pincode}`
+          : null,
       });
 
       if (method === 'RAZORPAY' && order.razorpayOrderId) {

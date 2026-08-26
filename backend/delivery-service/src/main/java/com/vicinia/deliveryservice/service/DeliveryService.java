@@ -141,7 +141,9 @@ public class DeliveryService {
         DeliveryPartner partner = getByUserId(userId);
         DeliveryTask task = getOwnedTask(partner.getId(), orderId);
         task.markPickedUp();
-        return taskRepository.save(task);
+        DeliveryTask saved = taskRepository.save(task);
+        eventPublisher.publishPickedUp(saved.getOrderId());
+        return saved;
     }
 
     public DeliveryTask delivered(UUID userId, UUID orderId) {

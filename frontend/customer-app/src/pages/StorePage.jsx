@@ -4,7 +4,8 @@ import { useCart } from '../context/CartContext';
 import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
 import { useProductImages } from '../hooks/useProductImages';
 import { listingsForMerchant } from '../api/inventory';
-import { ArrowLeftIcon, ClockIcon, NavigationIcon, PackageIcon, StoreIcon } from '../components/Icons';
+import { getMerchantStatus } from '../api/merchant';
+import { AlertIcon, ArrowLeftIcon, ClockIcon, NavigationIcon, PackageIcon, StoreIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
 import QtyStepper from '../components/QtyStepper';
 import { estimateDelivery } from '../utils/deliveryEstimate';
@@ -21,6 +22,7 @@ export default function StorePage() {
   const [addingId, setAddingId] = useState(null);
   const [busyListingId, setBusyListingId] = useState(null);
   const [conflict, setConflict] = useState(null);
+  const [storeOpen, setStoreOpen] = useState(true);
 
   const { imageFor, categoryFor } = useProductImages(listings.map((l) => l.productId));
 
@@ -30,9 +32,17 @@ export default function StorePage() {
       .then(setListings)
       .catch(() => setListings([]))
       .finally(() => setLoading(false));
+    // Not the cached useMerchantDirectory — that's populated once per
+    // session from /nearby (LIVE merchants only) and never re-checked, so
+    // a store that closes after it's cached would otherwise show as open
+    // here indefinitely. This is a fresh, authoritative check every visit.
+    getMerchantStatus(merchantId).then((s) => setStoreOpen(s.open)).catch(() => {});
   }, [merchantId]);
 
+  const addDisabled = !storeOpen;
+
   async function handleAdd(listing) {
+    if (addDisabled) return;
     setAddingId(listing.id);
     setConflict(null);
     try {
@@ -95,6 +105,13 @@ export default function StorePage() {
         </div>
       </div>
 
+      {!storeOpen && (
+        <div className="banner banner-error">
+          <AlertIcon style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1 }} />
+          <span>This shop is currently unavailable — it isn't accepting orders right now.</span>
+        </div>
+      )}
+
       {conflict && (
         <div className="banner banner-error">
           Your cart has items from another store — a Vicinia order comes from one merchant at a time.{' '}
@@ -125,17 +142,17 @@ export default function StorePage() {
                     <QtyStepper
                       quantity={cartQuantity}
                       busy={busyListingId === l.id}
-                      maxReached={cartQuantity >= l.availableStock}
-                      onIncrement={() => handleQty(l, cartQuantity + 1)}
+                      maxReached={addDisabled || cartQuantity >= l.availableStock}
+                      onIncrement={() => !addDisabled && handleQty(l, cartQuantity + 1)}
                       onDecrement={() => handleQty(l, cartQuantity - 1)}
                     />
                   ) : (
                     <button
                       className="btn btn-sm btn-primary"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(l); }}
-                      disabled={l.availableStock === 0 || addingId === l.id}
+                      disabled={addDisabled || l.availableStock === 0 || addingId === l.id}
                     >
-                      {addingId === l.id ? <span className="spinner" /> : l.availableStock === 0 ? 'Out of stock' : 'Add'}
+                      {addingId === l.id ? <span className="spinner" /> : addDisabled ? 'Unavailable' : l.availableStock === 0 ? 'Out of stock' : 'Add'}
                     </button>
                   )}
                 </div>

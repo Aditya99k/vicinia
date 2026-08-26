@@ -87,7 +87,7 @@ public class OrderService {
 
         PaymentMethod method = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.WALLET;
 
-        Order order = createOrder(userId, cart, method, request.deliveryLatitude(), request.deliveryLongitude());
+        Order order = createOrder(userId, cart, method, request.deliveryLatitude(), request.deliveryLongitude(), request.deliveryAddressLine());
         eventPublisher.publishCreated(order.getId(), userId);
 
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
@@ -217,19 +217,38 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    /**
-     * From delivery-service's delivery.delivered event. Two transitions in
-     * one call — DELIVERY_ASSIGNED -> OUT_FOR_DELIVERY -> DELIVERED — same
-     * double-hop reasoning as acceptedByMerchant: BUILD_TRACKER's Stage 11
-     * scope only asks for delivery.assigned/delivery.delivered, with no
-     * separate "picked up, now en route" signal to react to individually.
-     */
-    public void delivered(UUID orderId) {
+    /** From delivery-service's delivery.picked_up event — the rider has the parcel in hand. Mirrors assignedToDelivery's own idempotent, order-not-found-tolerant shape. */
+    public void outForDelivery(UUID orderId) {
         Order order = orderRepository.findById(orderId).orElse(null);
         if (order == null || order.getStatus() != OrderStatus.DELIVERY_ASSIGNED) {
             return;
         }
         order.transitionTo(OrderStatus.OUT_FOR_DELIVERY);
+        orderRepository.save(order);
+    }
+
+    /**
+     * From delivery-service's delivery.delivered event. Normally a single
+     * hop from OUT_FOR_DELIVERY (the rider's own delivery.picked_up event,
+     * handled by outForDelivery above, already made that transition) —
+     * still falls back to the old double-hop from DELIVERY_ASSIGNED
+     * straight to DELIVERED if a picked_up event was somehow lost, so a
+     * missing intermediate event never strands an order this close to
+     * done. Two transitions in one call in that fallback case — same
+     * double-hop reasoning acceptedByMerchant still uses for
+     * MERCHANT_ACCEPTED -> PREPARING.
+     */
+    public void delivered(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return;
+        }
+        if (order.getStatus() == OrderStatus.DELIVERY_ASSIGNED) {
+            order.transitionTo(OrderStatus.OUT_FOR_DELIVERY);
+        }
+        if (order.getStatus() != OrderStatus.OUT_FOR_DELIVERY) {
+            return;
+        }
         order.transitionTo(OrderStatus.DELIVERED);
         Order saved = orderRepository.save(order);
         eventPublisher.publishDelivered(saved.getId(), saved.getMerchantId(), saved.getTotalAmount());
@@ -320,9 +339,9 @@ public class OrderService {
     // --- small, single-save steps (see class comment for why each is exactly one save() call) ---
 
     Order createOrder(UUID userId, CartClient.CartView cart, PaymentMethod paymentMethod,
-                       Double deliveryLatitude, Double deliveryLongitude) {
+                       Double deliveryLatitude, Double deliveryLongitude, String deliveryAddressLine) {
         Order order = new Order(userId, cart.merchantId(), cart.subtotal(), paymentMethod);
-        order.setDeliveryLocation(deliveryLatitude, deliveryLongitude);
+        order.setDeliveryLocation(deliveryLatitude, deliveryLongitude, deliveryAddressLine);
         for (CartClient.CartLine line : cart.items()) {
             order.addItem(new OrderItem(line.listingId(), line.productId(), line.productName(), line.price(), line.quantity()));
         }

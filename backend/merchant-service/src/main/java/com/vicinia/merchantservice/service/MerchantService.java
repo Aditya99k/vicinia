@@ -45,6 +45,10 @@ public class MerchantService {
     }
 
     public Merchant getMine(UUID ownerUserId) {
+        return getByOwnerUserId(ownerUserId);
+    }
+
+    public Merchant getByOwnerUserId(UUID ownerUserId) {
         return merchantRepository.findByOwnerUserId(ownerUserId)
                 .orElseThrow(MerchantNotFoundException::new);
     }

@@ -10,12 +10,16 @@ package com.vicinia.orderservice.dto;
  * them up, same "already have it, don't add a hop" reasoning as cart's
  * own line-item snapshot. Both null for an address with no coordinates on
  * file (e.g. one added before this feature, or a customer who declined
- * location access).
+ * location access). deliveryAddressLine is the same address's plain-text
+ * form (label, line1/2, city, pincode), formatted client-side — the
+ * delivery partner's own readable "deliver to", alongside the map link
+ * the coordinates drive.
  */
 public record PlaceOrderRequest(
         String couponCode,
         PaymentMethod paymentMethod,
         Double deliveryLatitude,
-        Double deliveryLongitude
+        Double deliveryLongitude,
+        String deliveryAddressLine
 ) {
 }

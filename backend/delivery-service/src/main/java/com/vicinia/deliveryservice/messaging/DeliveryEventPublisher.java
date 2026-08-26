@@ -23,6 +23,10 @@ public class DeliveryEventPublisher {
         kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("delivery.assigned", payload));
     }
 
+    public void publishPickedUp(UUID orderId) {
+        kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("delivery.picked_up", new OrderIdPayload(orderId.toString())));
+    }
+
     public void publishDelivered(UUID orderId) {
         kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("delivery.delivered", new OrderIdPayload(orderId.toString())));
     }

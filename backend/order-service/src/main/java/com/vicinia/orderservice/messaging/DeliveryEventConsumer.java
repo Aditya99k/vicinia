@@ -38,6 +38,7 @@ public class DeliveryEventConsumer {
         UUID orderId = UUID.fromString((String) envelope.payload().get("orderId"));
         switch (envelope.eventType()) {
             case "delivery.assigned" -> orderService.assignedToDelivery(orderId);
+            case "delivery.picked_up" -> orderService.outForDelivery(orderId);
             case "delivery.delivered" -> orderService.delivered(orderId);
             default -> log.debug("Ignoring unrecognized eventType '{}'", envelope.eventType());
         }

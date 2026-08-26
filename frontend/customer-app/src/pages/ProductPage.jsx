@@ -5,7 +5,8 @@ import { listingsForProduct } from '../api/inventory';
 import { productRating, productReviews } from '../api/review';
 import { useCart } from '../context/CartContext';
 import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
-import { ArrowLeftIcon, StarIcon, StoreIcon } from '../components/Icons';
+import { getMerchantStatus } from '../api/merchant';
+import { AlertIcon, ArrowLeftIcon, StarIcon, StoreIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
 import QtyStepper from '../components/QtyStepper';
 import { formatMoney, formatDate } from '../utils/format';
@@ -26,6 +27,7 @@ export default function ProductPage() {
   const [addingId, setAddingId] = useState(null);
   const [busyListingId, setBusyListingId] = useState(null);
   const [conflict, setConflict] = useState(null);
+  const [merchantOpen, setMerchantOpen] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -43,6 +45,15 @@ export default function ProductPage() {
         // customer actually meant, not just whichever offer the API listed first.
         active.sort((a, b) => (a.id === highlightedListingId ? -1 : b.id === highlightedListingId ? 1 : 0));
         setListings(active);
+        // Multiple listings here can belong to different merchants — each
+        // gets its own fresh, authoritative open check (not the cached
+        // useMerchantDirectory, which can go stale — see StorePage's own
+        // comment on this same call).
+        [...new Set(active.map((x) => x.merchantId))].forEach((merchantId) => {
+          getMerchantStatus(merchantId)
+            .then((s) => setMerchantOpen((m) => ({ ...m, [merchantId]: s.open })))
+            .catch(() => {});
+        });
       }
       if (r.status === 'fulfilled') setRating(r.value);
       if (rv.status === 'fulfilled') setReviews(rv.value);
@@ -50,6 +61,7 @@ export default function ProductPage() {
   }, [id, highlightedListingId]);
 
   async function handleAdd(listing) {
+    if (merchantOpen[listing.merchantId] === false) return;
     setAddingId(listing.id);
     setError('');
     setConflict(null);
@@ -131,6 +143,7 @@ export default function ProductPage() {
                 const cartQuantity = cart?.items?.find((i) => i.listingId === l.id)?.quantity || 0;
                 const storeName = directory.get(l.merchantId)?.storeName;
                 const highlighted = l.id === highlightedListingId;
+                const closed = merchantOpen[l.merchantId] === false;
                 return (
                   <div className={`listing-row ${highlighted ? 'highlighted' : ''}`} key={l.id}>
                     <div className="merchant-tile-icon"><StoreIcon /></div>
@@ -138,24 +151,30 @@ export default function ProductPage() {
                       {storeName && <div className="listing-store">{storeName}</div>}
                       <div className="listing-price-row">
                         <span className="price">{formatMoney(l.price)}</span>
-                        <span className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</span>
+                        {closed ? (
+                          <span className="stock" style={{ color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <AlertIcon style={{ width: 12, height: 12 }} /> Currently unavailable
+                          </span>
+                        ) : (
+                          <span className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</span>
+                        )}
                       </div>
                     </div>
                     {cartQuantity > 0 ? (
                       <QtyStepper
                         quantity={cartQuantity}
                         busy={busyListingId === l.id}
-                        maxReached={cartQuantity >= l.availableStock}
-                        onIncrement={() => handleQty(l, cartQuantity + 1)}
+                        maxReached={closed || cartQuantity >= l.availableStock}
+                        onIncrement={() => !closed && handleQty(l, cartQuantity + 1)}
                         onDecrement={() => handleQty(l, cartQuantity - 1)}
                       />
                     ) : (
                       <button
                         className="btn btn-sm btn-primary"
-                        disabled={l.availableStock === 0 || addingId === l.id}
+                        disabled={closed || l.availableStock === 0 || addingId === l.id}
                         onClick={() => handleAdd(l)}
                       >
-                        {addingId === l.id ? <span className="spinner" /> : 'Add to cart'}
+                        {addingId === l.id ? <span className="spinner" /> : closed ? 'Unavailable' : 'Add to cart'}
                       </button>
                     )}
                   </div>

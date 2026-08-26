@@ -32,6 +32,11 @@ export function nearby(city) {
   return apiClient.get('/api/merchants/nearby', { params: { city } }).then((r) => r.data);
 }
 
+/** Fresh, authoritative open/closed check for one store — the client-side merchant directory (useMerchantDirectory) is cached for the whole session and can go stale if a store closes after it's loaded. */
+export function getMerchantStatus(ownerUserId) {
+  return apiClient.get(`/api/merchants/${ownerUserId}/status`).then((r) => r.data);
+}
+
 // --- Merchant order queue ---------------------------------------------
 
 export function pendingOrders() {

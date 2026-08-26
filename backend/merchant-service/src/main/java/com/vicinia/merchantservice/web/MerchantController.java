@@ -4,6 +4,7 @@ import com.vicinia.common.security.HeaderNames;
 import com.vicinia.merchantservice.domain.Merchant;
 import com.vicinia.merchantservice.dto.ApplyRequest;
 import com.vicinia.merchantservice.dto.MerchantResponse;
+import com.vicinia.merchantservice.dto.MerchantStatusResponse;
 import com.vicinia.merchantservice.dto.MerchantSummaryResponse;
 import com.vicinia.merchantservice.dto.UpdateHoursRequest;
 import com.vicinia.merchantservice.dto.UpdateStoreProfileRequest;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -77,5 +79,11 @@ public class MerchantController {
     @GetMapping("/nearby")
     public List<MerchantSummaryResponse> nearby(@RequestParam(required = false) String city) {
         return merchantService.nearby(city).stream().map(MerchantSummaryResponse::from).toList();
+    }
+
+    /** A store's live open/closed state — see MerchantStatusResponse for why this exists alongside /nearby. Not public: only reached from an already-authenticated customer's store/product page. */
+    @GetMapping("/{ownerUserId}/status")
+    public MerchantStatusResponse status(@PathVariable UUID ownerUserId) {
+        return MerchantStatusResponse.from(merchantService.getByOwnerUserId(ownerUserId));
     }
 }

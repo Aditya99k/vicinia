@@ -4,7 +4,7 @@ import { acceptTask, delivered, getMe, goOffline, goOnline, myActiveTasks, picke
 import { getOrderForDelivery } from '../../api/order';
 import { useMerchantDirectory } from '../../hooks/useMerchantDirectory';
 import { getActiveTask, recordTask } from '../../utils/deliveryHistory';
-import { BanknoteIcon, CheckCircleIcon, NavigationIcon, PackageIcon, StoreIcon, TruckIcon } from '../../components/Icons';
+import { BanknoteIcon, CheckCircleIcon, MapPinIcon, NavigationIcon, PackageIcon, PhoneIcon, StoreIcon, TruckIcon } from '../../components/Icons';
 import { DeliveryIllustration } from '../../components/Illustrations';
 import StatusBadge from '../../components/StatusBadge';
 import { formatMoney } from '../../utils/format';
@@ -241,6 +241,22 @@ export default function DeliveryHomePage() {
           {storeName && (
             <div className="active-task-store">
               <StoreIcon style={{ width: 14, height: 14 }} /> Pick up from <strong>{storeName}</strong>
+            </div>
+          )}
+
+          {orderInfo?.dropoffAddress && (
+            <div className="dropoff-address-block">
+              <div className="pin"><MapPinIcon style={{ width: 15, height: 15 }} /></div>
+              <div className="addr">
+                <div className="label">Deliver to</div>
+                <div className="value">{orderInfo.dropoffAddress}</div>
+                {orderInfo.customerName && <div className="customer-name">{orderInfo.customerName}</div>}
+              </div>
+              {orderInfo.customerPhone && (
+                <a className="btn btn-secondary btn-sm" href={`tel:${orderInfo.customerPhone}`}>
+                  <PhoneIcon style={{ width: 13, height: 13 }} /> Call
+                </a>
+              )}
             </div>
           )}
 
