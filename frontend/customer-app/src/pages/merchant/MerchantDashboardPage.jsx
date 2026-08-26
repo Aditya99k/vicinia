@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { closeStore, getMe, goLive, reopenStore } from '../../api/merchant';
-import { pendingOrders } from '../../api/merchant';
 import { myListings } from '../../api/inventory';
 import StatusBadge from '../../components/StatusBadge';
-import { ChevronRightIcon, ClipboardIcon, PackageIcon, StoreIcon } from '../../components/Icons';
+import MerchantOrderQueue from '../../components/MerchantOrderQueue';
+import { ChevronRightIcon, PackageIcon, StoreIcon } from '../../components/Icons';
 
 export default function MerchantDashboardPage() {
   const [merchant, setMerchant] = useState(null);
@@ -12,7 +12,6 @@ export default function MerchantDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [pendingCount, setPendingCount] = useState(0);
   const [listingCount, setListingCount] = useState(0);
 
   function load() {
@@ -22,7 +21,6 @@ export default function MerchantDashboardPage() {
       .then((m) => {
         setMerchant(m);
         if (m.status === 'LIVE') {
-          pendingOrders().then((l) => setPendingCount(l.length)).catch(() => {});
           myListings().then((l) => setListingCount(l.length)).catch(() => {});
         }
       })
@@ -118,14 +116,6 @@ export default function MerchantDashboardPage() {
       {(merchant.status === 'LIVE' || merchant.status === 'TEMP_CLOSED') && (
         <>
           <div className="dashboard-stats">
-            <Link to="/merchant/orders" className="card stat-card">
-              <div className="stat-icon"><ClipboardIcon style={{ width: 18, height: 18 }} /></div>
-              <div>
-                <div className="stat-value">{pendingCount}</div>
-                <div className="muted">Pending orders</div>
-              </div>
-              <ChevronRightIcon className="chev" style={{ width: 16, height: 16 }} />
-            </Link>
             <Link to="/merchant/listings" className="card stat-card">
               <div className="stat-icon"><PackageIcon style={{ width: 18, height: 18 }} /></div>
               <div>
@@ -147,6 +137,8 @@ export default function MerchantDashboardPage() {
           <button className="btn btn-secondary" onClick={handleToggleOpen} disabled={busy} style={{ marginTop: 18 }}>
             {busy ? <span className="spinner" /> : merchant.status === 'TEMP_CLOSED' ? 'Reopen store' : 'Temporarily close store'}
           </button>
+
+          <MerchantOrderQueue />
         </>
       )}
     </div>

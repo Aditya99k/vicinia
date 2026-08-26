@@ -71,31 +71,45 @@ export default function DeliveryHomePage() {
   async function handleToggleOnline() {
     setToggling(true);
     setError('');
-    try {
-      if (partner?.status === 'ONLINE') {
+
+    // Going offline is a single synchronous call, so it's handled entirely
+    // here. Going online waits on the browser's async geolocation prompt —
+    // that path clears `toggling` itself, in whichever of its two
+    // callbacks actually fires, never here.
+    if (partner?.status === 'ONLINE') {
+      try {
         await goOffline();
         load();
-      } else if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            await goOnline({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-            load();
-            setToggling(false);
-          },
-          async () => {
-            setError('Could not get your location — enable location access to go online.');
-            setToggling(false);
-          }
-        );
-        return;
-      } else {
-        setError('Your browser does not support location access.');
+      } catch {
+        setError('Could not update your status.');
+      } finally {
+        setToggling(false);
       }
-    } catch {
-      setError('Could not update your status.');
-    } finally {
-      if (!navigator.geolocation) setToggling(false);
+      return;
     }
+
+    if (!navigator.geolocation) {
+      setError('Your browser does not support location access.');
+      setToggling(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await goOnline({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          load();
+        } catch {
+          setError('Could not update your status.');
+        } finally {
+          setToggling(false);
+        }
+      },
+      () => {
+        setError('Could not get your location — enable location access to go online.');
+        setToggling(false);
+      }
+    );
   }
 
   function pingLocation() {

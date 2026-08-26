@@ -17,7 +17,6 @@ const SECTION_LINKS = {
   MERCHANT: [
     { to: '/merchant', label: 'Dashboard', end: true },
     { to: '/merchant/listings', label: 'Listings' },
-    { to: '/merchant/orders', label: 'Orders' },
     { to: '/merchant/settlements', label: 'Settlements' },
     { to: '/merchant/store', label: 'Store' },
   ],

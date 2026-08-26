@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { acceptOrder, getMe, pendingOrders, readyOrder, rejectOrder } from '../../api/merchant';
-import { getOrderForMerchant } from '../../api/order';
-import { useProductImages } from '../../hooks/useProductImages';
-import StatusBadge from '../../components/StatusBadge';
-import ProductImage from '../../components/ProductImage';
-import { BellIcon } from '../../components/Icons';
-import { EmptyBoxIllustration } from '../../components/Illustrations';
-import { formatDateTime, formatMoney } from '../../utils/format';
-import { useActionDialog } from '../../hooks/useActionDialog';
+import { acceptOrder, getMe, pendingOrders, readyOrder, rejectOrder } from '../api/merchant';
+import { getOrderForMerchant } from '../api/order';
+import { useProductImages } from '../hooks/useProductImages';
+import StatusBadge from './StatusBadge';
+import ProductImage from './ProductImage';
+import { BellIcon } from './Icons';
+import { EmptyBoxIllustration } from './Illustrations';
+import { formatDateTime, formatMoney } from '../utils/format';
+import { useActionDialog } from '../hooks/useActionDialog';
 
 const POLL_MS = 8000;
 
-export default function MerchantOrdersPage() {
+/** The merchant's live order queue — lives on the dashboard (their landing page) so incoming orders need no extra click to reach. */
+export default function MerchantOrderQueue() {
   const [orders, setOrders] = useState([]);
   const [details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
@@ -96,10 +97,12 @@ export default function MerchantOrdersPage() {
   }
 
   return (
-    <div>
+    <div id="order-queue">
       {dialog}
-      <h1 style={{ fontSize: 22, marginBottom: 4 }}>Order queue</h1>
-      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18 }}>Accept incoming orders and mark them ready for pickup.</p>
+      <div className="section-title" style={{ marginTop: 28 }}><span>Order queue</span></div>
+      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14, marginTop: -8 }}>
+        Accept incoming orders and mark them ready for pickup.
+      </p>
 
       {toast && (
         <Link to="#" onClick={(e) => e.preventDefault()} className="new-order-toast">

@@ -18,7 +18,7 @@ export function notificationTarget(notification, role) {
 
   switch (notification.eventType) {
     case 'order.confirmed':
-      if (role === 'MERCHANT') return { icon: 'package', path: '/merchant/orders' };
+      if (role === 'MERCHANT') return { icon: 'package', path: '/merchant#order-queue' };
       return { icon: 'check', path: orderId ? `/orders/${orderId}` : '/orders' };
     case 'payment.failed':
       return { icon: 'alert', path: orderId ? `/orders/${orderId}` : '/orders' };

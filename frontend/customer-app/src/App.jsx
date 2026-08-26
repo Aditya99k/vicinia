@@ -25,7 +25,6 @@ import MerchantDashboardPage from './pages/merchant/MerchantDashboardPage';
 import MerchantApplyPage from './pages/merchant/MerchantApplyPage';
 import MerchantStorePage from './pages/merchant/MerchantStorePage';
 import MerchantListingsPage from './pages/merchant/MerchantListingsPage';
-import MerchantOrdersPage from './pages/merchant/MerchantOrdersPage';
 import MerchantSettlementsPage from './pages/merchant/MerchantSettlementsPage';
 
 import DeliveryHomePage from './pages/delivery/DeliveryHomePage';
@@ -79,7 +78,6 @@ export default function App() {
               <Route path="/merchant/apply" element={<RoleRoute role="MERCHANT"><MerchantApplyPage /></RoleRoute>} />
               <Route path="/merchant/store" element={<RoleRoute role="MERCHANT"><MerchantStorePage /></RoleRoute>} />
               <Route path="/merchant/listings" element={<RoleRoute role="MERCHANT"><MerchantListingsPage /></RoleRoute>} />
-              <Route path="/merchant/orders" element={<RoleRoute role="MERCHANT"><MerchantOrdersPage /></RoleRoute>} />
               <Route path="/merchant/settlements" element={<RoleRoute role="MERCHANT"><MerchantSettlementsPage /></RoleRoute>} />
 
               {/* Delivery */}

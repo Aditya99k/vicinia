@@ -36,7 +36,7 @@ public class MerchantOrderService {
      * mark it ready for pickup.
      */
     public List<MerchantOrderTask> pending(UUID ownerUserId) {
-        return taskRepository.findByMerchantIdAndStatusInOrderByCreatedAtAsc(
+        return taskRepository.findByMerchantIdAndStatusInOrderByCreatedAtDesc(
                 ownerUserId, List.of(OrderTaskStatus.PENDING_ACCEPTANCE, OrderTaskStatus.ACCEPTED));
     }
 

@@ -11,13 +11,21 @@ import { useActionDialog } from '../hooks/useActionDialog';
 import { formatDateTime, formatMoney } from '../utils/format';
 
 const POLL_MS = 8000;
-const LIVE_STATUSES = new Set(['CREATED', 'PAYMENT_PENDING', 'CONFIRMED', 'MERCHANT_ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY']);
+// Must match order-service's real OrderStatus lifecycle exactly (see that
+// enum's own javadoc) — DELIVERY_ASSIGNED sits between READY_FOR_PICKUP and
+// OUT_FOR_DELIVERY. Missing it here previously meant the timeline's
+// findIndex() returned -1 the moment a rider was assigned (every step
+// showing "not done"), and polling stopped outright since this same set
+// gates it — a status the poll never expects to see again is where it
+// silently gives up.
+const LIVE_STATUSES = new Set(['CREATED', 'PAYMENT_PENDING', 'CONFIRMED', 'MERCHANT_ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERY_ASSIGNED', 'OUT_FOR_DELIVERY']);
 
 const HAPPY_PATH = [
   { status: 'CONFIRMED', label: 'Order confirmed', icon: CheckCircleIcon },
   { status: 'MERCHANT_ACCEPTED', label: 'Store accepted', icon: PackageIcon },
   { status: 'PREPARING', label: 'Preparing your order', icon: PackageIcon },
   { status: 'READY_FOR_PICKUP', label: 'Ready for pickup', icon: PackageIcon },
+  { status: 'DELIVERY_ASSIGNED', label: 'Delivery partner assigned', icon: TruckIcon },
   { status: 'OUT_FOR_DELIVERY', label: 'Out for delivery', icon: TruckIcon },
   { status: 'DELIVERED', label: 'Delivered', icon: CheckCircleIcon },
 ];
