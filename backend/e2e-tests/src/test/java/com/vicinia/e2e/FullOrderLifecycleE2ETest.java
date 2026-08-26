@@ -123,8 +123,18 @@ class FullOrderLifecycleE2ETest {
         post("/api/delivery/tasks/" + orderId + "/picked-up", partnerToken, null);
         post("/api/delivery/tasks/" + orderId + "/delivered", partnerToken, null);
 
-        JsonNode delivered = get("/api/orders/" + orderId, customerToken);
-        assertThat(delivered.get("status").asText()).isEqualTo("DELIVERED");
+        // delivery.delivered -> order-service's DeliveryEventConsumer is async,
+        // same as every other cross-service effect awaited above — asserting
+        // on an immediate, synchronous GET right after the POST above was
+        // always a latent race, not a guarantee; it happened to read as
+        // passing only when that one hop was fast enough. Stage 18 added
+        // merchant-service as a second consumer group on delivery-events
+        // (DeliveryDeliveredConsumer), and the extra load was enough to flip
+        // this from "usually fine" to "reliably too slow".
+        await("order reaches DELIVERED via delivery.delivered").atMost(Duration.ofSeconds(45)).untilAsserted(() -> {
+            JsonNode current = get("/api/orders/" + orderId, customerToken);
+            assertThat(current.get("status").asText()).isEqualTo("DELIVERED");
+        });
 
         // --- Settlement ---
         await("settlement entry created from order.delivered").atMost(Duration.ofSeconds(45)).untilAsserted(() -> {
