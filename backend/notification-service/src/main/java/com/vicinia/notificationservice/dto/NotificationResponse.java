@@ -10,6 +10,7 @@ public record NotificationResponse(
         String channel,
         String subject,
         String body,
+        String referenceId,
         Instant createdAt
 ) {
     public static NotificationResponse from(Notification notification) {
@@ -19,6 +20,7 @@ public record NotificationResponse(
                 notification.getChannel(),
                 notification.getSubject(),
                 notification.getBody(),
+                notification.getReferenceId(),
                 notification.getCreatedAt()
         );
     }

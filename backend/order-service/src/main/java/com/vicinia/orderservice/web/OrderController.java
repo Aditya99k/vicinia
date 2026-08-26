@@ -1,11 +1,14 @@
 package com.vicinia.orderservice.web;
 
 import com.vicinia.common.security.HeaderNames;
+import com.vicinia.orderservice.client.RiderClient;
 import com.vicinia.orderservice.dto.CancelOrderRequest;
+import com.vicinia.orderservice.dto.OrderDeliveryViewResponse;
 import com.vicinia.orderservice.dto.OrderResponse;
 import com.vicinia.orderservice.dto.PlaceOrderRequest;
 import com.vicinia.orderservice.dto.PlaceOrderResult;
 import com.vicinia.orderservice.service.OrderService;
+import com.vicinia.orderservice.util.PermissionUtil;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,9 +29,11 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+    private final RiderClient riderClient;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, RiderClient riderClient) {
         this.orderService = orderService;
+        this.riderClient = riderClient;
     }
 
     @PostMapping
@@ -45,13 +50,24 @@ public class OrderController {
 
     @GetMapping("/{id}")
     public OrderResponse getById(@RequestHeader(HeaderNames.USER_ID) String userId, @PathVariable UUID id) {
-        return OrderResponse.from(orderService.getById(id, UUID.fromString(userId)));
+        OrderResponse response = OrderResponse.from(orderService.getById(id, UUID.fromString(userId)));
+        return riderClient.partnerUserIdFor(id)
+                .flatMap(riderClient::contactSummary)
+                .map(contact -> response.withRider(contact.fullName(), contact.phone()))
+                .orElse(response);
     }
 
     /** The merchant's own view of one of their orders — full item detail, scoped by merchantId instead of customer userId. */
     @GetMapping("/{id}/merchant-view")
     public OrderResponse getByIdForMerchant(@RequestHeader(HeaderNames.USER_ID) String userId, @PathVariable UUID id) {
         return OrderResponse.from(orderService.getByIdForMerchant(id, UUID.fromString(userId)));
+    }
+
+    /** The delivery partner's slim view — payment amount/method/paid only, gated by the DELIVERY_MANAGE permission, not per-order ownership (see OrderDeliveryViewResponse). */
+    @GetMapping("/{id}/delivery-view")
+    public OrderDeliveryViewResponse getForDelivery(@RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions, @PathVariable UUID id) {
+        PermissionUtil.require(permissions, "DELIVERY_MANAGE");
+        return OrderDeliveryViewResponse.from(orderService.getForDelivery(id));
     }
 
     @PostMapping("/{id}/cancel")

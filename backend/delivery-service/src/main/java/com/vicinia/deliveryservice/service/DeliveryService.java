@@ -12,6 +12,8 @@ import com.vicinia.deliveryservice.repository.DeliveryTaskRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -86,6 +88,15 @@ public class DeliveryService {
     public List<DeliveryTask> myActiveTasks(UUID userId) {
         DeliveryPartner partner = getByUserId(userId);
         return taskRepository.findByPartnerIdAndStatusInOrderByAssignedAtDesc(partner.getId(), ACTIVE_TASK_STATUSES);
+    }
+
+    /** Resolves an order's assigned rider to their own userId (not DeliveryPartner's local PK) — order-service's only way to then ask user-service who that actually is, for the customer's order-detail page. Empty until someone is actually assigned. */
+    public Optional<UUID> riderUserIdFor(UUID orderId) {
+        return taskRepository.findByOrderId(orderId)
+                .map(DeliveryTask::getPartnerId)
+                .filter(Objects::nonNull)
+                .flatMap(partnerRepository::findById)
+                .map(DeliveryPartner::getUserId);
     }
 
     /** Idempotent on orderId — a replayed order.ready is a safe no-op, matching every other Kafka-driven idempotency in this project. */

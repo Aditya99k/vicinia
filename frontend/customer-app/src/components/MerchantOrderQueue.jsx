@@ -5,12 +5,13 @@ import { getOrderForMerchant } from '../api/order';
 import { useProductImages } from '../hooks/useProductImages';
 import StatusBadge from './StatusBadge';
 import ProductImage from './ProductImage';
-import { BellIcon } from './Icons';
+import { BellIcon, CheckCircleIcon, TruckIcon } from './Icons';
 import { EmptyBoxIllustration } from './Illustrations';
 import { formatDateTime, formatMoney } from '../utils/format';
 import { useActionDialog } from '../hooks/useActionDialog';
 
 const POLL_MS = 8000;
+const DETAIL_STATUSES = new Set(['PENDING_ACCEPTANCE', 'ACCEPTED', 'READY']);
 
 /** The merchant's live order queue — lives on the dashboard (their landing page) so incoming orders need no extra click to reach. */
 export default function MerchantOrderQueue() {
@@ -21,10 +22,24 @@ export default function MerchantOrderQueue() {
   const [error, setError] = useState('');
   const [locationMissing, setLocationMissing] = useState(false);
   const [toast, setToast] = useState(null);
+  const [flashId, setFlashId] = useState(null);
   const { promptText, dialog } = useActionDialog();
 
   const knownIds = useRef(null);
   const toastTimer = useRef(null);
+  const flashTimer = useRef(null);
+
+  function showToast(icon, title, subtitle) {
+    clearTimeout(toastTimer.current);
+    setToast({ icon, title, subtitle });
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  }
+
+  function flash(orderId) {
+    clearTimeout(flashTimer.current);
+    setFlashId(orderId);
+    flashTimer.current = setTimeout(() => setFlashId(null), 900);
+  }
 
   const load = useCallback((silent) => {
     if (!silent) setLoading(true);
@@ -35,16 +50,14 @@ export default function MerchantOrderQueue() {
         if (knownIds.current) {
           const arrived = list.filter((o) => !knownIds.current.has(o.orderId));
           if (arrived.length > 0) {
-            clearTimeout(toastTimer.current);
-            setToast(arrived[0]);
-            toastTimer.current = setTimeout(() => setToast(null), 6000);
+            showToast(<BellIcon style={{ width: 16, height: 16 }} />, 'New order received', `Order #${arrived[0].orderId.slice(0, 8)}`);
           }
         }
         knownIds.current = new Set(list.map((o) => o.orderId));
         setOrders(list);
 
         list.forEach((o) => {
-          if (o.status === 'PENDING_ACCEPTANCE' || o.status === 'ACCEPTED') {
+          if (DETAIL_STATUSES.has(o.status)) {
             getOrderForMerchant(o.orderId)
               .then((full) => setDetails((d) => ({ ...d, [o.orderId]: full })))
               .catch(() => {});
@@ -53,6 +66,7 @@ export default function MerchantOrderQueue() {
       })
       .catch(() => { if (!silent) setError('Could not load your order queue.'); })
       .finally(() => { if (!silent) setLoading(false); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -62,17 +76,19 @@ export default function MerchantOrderQueue() {
 
   useEffect(() => {
     const interval = setInterval(() => load(true), POLL_MS);
-    return () => { clearInterval(interval); clearTimeout(toastTimer.current); };
+    return () => { clearInterval(interval); clearTimeout(toastTimer.current); clearTimeout(flashTimer.current); };
   }, [load]);
 
   const allItems = Object.values(details).flatMap((o) => o.items);
   const { imageFor, categoryFor } = useProductImages(allItems.map((i) => i.productId));
 
-  async function act(orderId, fn) {
+  async function act(orderId, fn, successTitle) {
     setBusyId(orderId);
     setError('');
     try {
       await fn(orderId);
+      flash(orderId);
+      showToast(<CheckCircleIcon style={{ width: 16, height: 16 }} />, successTitle, `Order #${orderId.slice(0, 8)}`);
       load(true);
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not update this order.');
@@ -88,6 +104,8 @@ export default function MerchantOrderQueue() {
     setError('');
     try {
       await rejectOrder(orderId, reason || 'Unable to fulfil');
+      flash(orderId);
+      showToast(<CheckCircleIcon style={{ width: 16, height: 16 }} />, 'Order rejected', `Order #${orderId.slice(0, 8)}`);
       load(true);
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not reject this order.');
@@ -101,17 +119,17 @@ export default function MerchantOrderQueue() {
       {dialog}
       <div className="section-title" style={{ marginTop: 28 }}><span>Order queue</span></div>
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14, marginTop: -8 }}>
-        Accept incoming orders and mark them ready for pickup.
+        Accept incoming orders, mark them ready, and verify a rider's pickup against the order id below.
       </p>
 
       {toast && (
-        <Link to="#" onClick={(e) => e.preventDefault()} className="new-order-toast">
-          <span className="new-order-toast-icon"><BellIcon style={{ width: 16, height: 16 }} /></span>
+        <div className="new-order-toast">
+          <span className="new-order-toast-icon">{toast.icon}</span>
           <div>
-            <div style={{ fontWeight: 700 }}>New order received</div>
-            <div className="muted">Order #{toast.orderId.slice(0, 8)}</div>
+            <div style={{ fontWeight: 700 }}>{toast.title}</div>
+            <div className="muted">{toast.subtitle}</div>
           </div>
-        </Link>
+        </div>
       )}
 
       {locationMissing && (
@@ -137,7 +155,7 @@ export default function MerchantOrderQueue() {
           {orders.map((o) => {
             const full = details[o.orderId];
             return (
-              <div className="card merchant-order-card" key={o.orderId}>
+              <div className={`card merchant-order-card ${flashId === o.orderId ? 'action-flash' : ''} ${o.status === 'READY' ? 'awaiting-pickup' : ''}`} key={o.orderId}>
                 <div className="merchant-order-head">
                   <div>
                     <div className="order-row-id">Order #{o.orderId.slice(0, 8)}</div>
@@ -175,15 +193,21 @@ export default function MerchantOrderQueue() {
                       <button className="btn btn-secondary btn-sm" onClick={() => handleReject(o.orderId)} disabled={busyId === o.orderId}>
                         Reject
                       </button>
-                      <button className="btn btn-primary btn-sm" onClick={() => act(o.orderId, acceptOrder)} disabled={busyId === o.orderId}>
+                      <button className="btn btn-primary btn-sm" onClick={() => act(o.orderId, acceptOrder, 'Order accepted')} disabled={busyId === o.orderId}>
                         {busyId === o.orderId ? <span className="spinner" /> : 'Accept'}
                       </button>
                     </>
                   )}
                   {o.status === 'ACCEPTED' && (
-                    <button className="btn btn-primary btn-sm" onClick={() => act(o.orderId, readyOrder)} disabled={busyId === o.orderId}>
+                    <button className="btn btn-primary btn-sm" onClick={() => act(o.orderId, readyOrder, 'Marked ready for pickup')} disabled={busyId === o.orderId}>
                       {busyId === o.orderId ? <span className="spinner" /> : 'Mark ready for pickup'}
                     </button>
+                  )}
+                  {o.status === 'READY' && (
+                    <span className="pickup-waiting-badge">
+                      <TruckIcon style={{ width: 14, height: 14 }} />
+                      Awaiting rider pickup — verify against order #{o.orderId.slice(0, 8)}
+                    </span>
                   )}
                 </div>
               </div>

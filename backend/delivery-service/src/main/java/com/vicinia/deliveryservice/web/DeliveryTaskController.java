@@ -4,6 +4,7 @@ import com.vicinia.common.security.HeaderNames;
 import com.vicinia.deliveryservice.dto.DeliveryTaskResponse;
 import com.vicinia.deliveryservice.service.DeliveryService;
 import com.vicinia.deliveryservice.util.PermissionUtil;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** A delivery partner acting on a task assigned to them — ownership is enforced in DeliveryService.getOwnedTask, not here. */
@@ -32,6 +34,14 @@ public class DeliveryTaskController {
                                             @RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions) {
         PermissionUtil.require(permissions, REQUIRED_PERMISSION);
         return deliveryService.myActiveTasks(UUID.fromString(userId)).stream().map(DeliveryTaskResponse::from).toList();
+    }
+
+    /** Service-to-service — order-service resolves this to a name/phone via user-service, for the customer's own order-detail page. No auth header check: the real ownership check already happened one hop earlier, in OrderService.getById. */
+    @GetMapping("/{orderId}/rider")
+    public ResponseEntity<Map<String, String>> rider(@PathVariable UUID orderId) {
+        return deliveryService.riderUserIdFor(orderId)
+                .map(id -> ResponseEntity.ok(Map.of("partnerUserId", id.toString())))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{orderId}/accept")

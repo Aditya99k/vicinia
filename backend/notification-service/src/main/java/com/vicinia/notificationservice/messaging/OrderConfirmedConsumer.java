@@ -1,6 +1,7 @@
 package com.vicinia.notificationservice.messaging;
 
 import com.vicinia.notificationservice.service.NotificationService;
+import com.vicinia.notificationservice.util.IdFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.DltHandler;
@@ -43,15 +44,20 @@ public class OrderConfirmedConsumer {
         String orderId = (String) envelope.payload().get("orderId");
         String userId = (String) envelope.payload().get("userId");
         String merchantId = (String) envelope.payload().get("merchantId");
+        String totalAmount = (String) envelope.payload().get("totalAmount");
+        String shortId = IdFormat.shorten(orderId);
+        String amountText = totalAmount != null ? " (₹" + totalAmount + ")" : "";
 
         notificationService.record(envelope.eventId(), envelope.eventType(), userId,
                 "Order confirmed",
-                "Your order " + orderId + " has been confirmed and is being prepared.");
+                "Your order #" + shortId + amountText + " has been confirmed and is being prepared.",
+                orderId);
 
         if (merchantId != null) {
             notificationService.record(envelope.eventId() + ":merchant", envelope.eventType(), merchantId,
                     "New order received",
-                    "You have a new order (" + orderId + ") to prepare.");
+                    "You have a new order #" + shortId + amountText + " to prepare.",
+                    orderId);
         }
     }
 

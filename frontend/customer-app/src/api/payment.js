@@ -7,3 +7,7 @@ export function getWalletBalance() {
 export function topupWallet(amount) {
   return apiClient.post('/api/payments/wallet/topup', { amount }).then((r) => r.data);
 }
+
+export function verifyRazorpayPayment({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) {
+  return apiClient.post('/api/payments/razorpay/verify', { razorpayOrderId, razorpayPaymentId, razorpaySignature });
+}

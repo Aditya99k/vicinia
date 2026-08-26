@@ -9,6 +9,7 @@ import com.vicinia.userservice.repository.AddressRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,15 +40,20 @@ public class AddressController {
                 .toList();
     }
 
+    @Transactional
     @PostMapping
     public ResponseEntity<AddressResponse> create(@RequestHeader(HeaderNames.USER_ID) String userId,
                                                     @Valid @RequestBody AddressRequest request) {
         Address address = new Address(UUID.fromString(userId), request.label(), request.line1(), request.line2(),
                 request.city(), request.state(), request.pincode(), request.isDefault());
         address = addressRepository.save(address);
+        if (request.isDefault()) {
+            addressRepository.clearDefaultForOthers(UUID.fromString(userId), address.getId());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(AddressResponse.from(address));
     }
 
+    @Transactional
     @PutMapping("/{addressId}")
     public AddressResponse update(@RequestHeader(HeaderNames.USER_ID) String userId,
                                    @PathVariable String addressId,
@@ -59,6 +65,9 @@ public class AddressController {
         address.update(request.label(), request.line1(), request.line2(),
                 request.city(), request.state(), request.pincode(), request.isDefault());
         addressRepository.save(address);
+        if (request.isDefault()) {
+            addressRepository.clearDefaultForOthers(UUID.fromString(userId), address.getId());
+        }
         return AddressResponse.from(address);
     }
 

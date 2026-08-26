@@ -28,16 +28,20 @@ public class MerchantOrderService {
     }
 
     /**
-     * The merchant's action queue: PENDING_ACCEPTANCE (needs accept/reject)
-     * and ACCEPTED (needs mark-ready) both belong here, since both still
-     * need something from the merchant. PENDING_ACCEPTANCE alone (the
-     * original shape here) meant an order vanished from every merchant's
-     * queue the instant they accepted it, with no way back to it to ever
-     * mark it ready for pickup.
+     * The merchant's action-or-attention queue: PENDING_ACCEPTANCE (needs
+     * accept/reject), ACCEPTED (needs mark-ready), and READY (waiting at
+     * the counter for a rider to actually show up and collect it) all
+     * belong here. PENDING_ACCEPTANCE alone (the original shape here)
+     * meant an order vanished from every merchant's queue the instant they
+     * accepted it, with no way back to it to ever mark it ready; stopping
+     * at ACCEPTED (the next fix) then meant a READY order vanished from
+     * sight the moment it was marked ready, with no record left for the
+     * merchant to check a rider's pickup against. It only leaves this list
+     * once COMPLETED, driven by completeFromDelivery below.
      */
     public List<MerchantOrderTask> pending(UUID ownerUserId) {
         return taskRepository.findByMerchantIdAndStatusInOrderByCreatedAtDesc(
-                ownerUserId, List.of(OrderTaskStatus.PENDING_ACCEPTANCE, OrderTaskStatus.ACCEPTED));
+                ownerUserId, List.of(OrderTaskStatus.PENDING_ACCEPTANCE, OrderTaskStatus.ACCEPTED, OrderTaskStatus.READY));
     }
 
     public MerchantOrderTask accept(UUID ownerUserId, UUID orderId) {
@@ -68,6 +72,17 @@ public class MerchantOrderService {
         taskRepository.save(task);
         eventPublisher.publishReady(orderId, ownerUserId, merchant.getLatitude(), merchant.getLongitude());
         return task;
+    }
+
+    /** From delivery-service's delivery.delivered event — the only thing that finally clears a READY task out of the merchant's queue. Idempotent (only transitions while still READY), same as every other Kafka-driven handler in this project. */
+    public void completeFromDelivery(UUID orderId) {
+        taskRepository.findByOrderId(orderId).ifPresent(task -> {
+            if (task.getStatus() != OrderTaskStatus.READY) {
+                return;
+            }
+            task.transitionTo(OrderTaskStatus.COMPLETED);
+            taskRepository.save(task);
+        });
     }
 
     private MerchantOrderTask getOwnedTask(UUID merchantId, UUID orderId) {

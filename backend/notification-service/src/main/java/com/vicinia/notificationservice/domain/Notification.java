@@ -30,17 +30,21 @@ public class Notification {
     private String subject;
     private String body;
 
+    /** The full order/product id this notification is about, if any — lets the frontend build a click target directly instead of regex-parsing a shortened id back out of the display body. */
+    private String referenceId;
+
     private Instant createdAt = Instant.now();
 
     protected Notification() {
     }
 
-    public Notification(String eventId, String eventType, String recipientUserId, String subject, String body) {
+    public Notification(String eventId, String eventType, String recipientUserId, String subject, String body, String referenceId) {
         this.eventId = eventId;
         this.eventType = eventType;
         this.recipientUserId = recipientUserId;
         this.subject = subject;
         this.body = body;
+        this.referenceId = referenceId;
     }
 
     public String getId() {
@@ -69,6 +73,10 @@ public class Notification {
 
     public String getBody() {
         return body;
+    }
+
+    public String getReferenceId() {
+        return referenceId;
     }
 
     public Instant getCreatedAt() {

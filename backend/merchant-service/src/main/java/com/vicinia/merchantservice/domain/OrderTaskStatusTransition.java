@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.vicinia.merchantservice.domain.OrderTaskStatus.ACCEPTED;
+import static com.vicinia.merchantservice.domain.OrderTaskStatus.COMPLETED;
 import static com.vicinia.merchantservice.domain.OrderTaskStatus.PENDING_ACCEPTANCE;
 import static com.vicinia.merchantservice.domain.OrderTaskStatus.READY;
 import static com.vicinia.merchantservice.domain.OrderTaskStatus.REJECTED;
@@ -21,7 +22,8 @@ public final class OrderTaskStatusTransition {
         ALLOWED.put(PENDING_ACCEPTANCE, EnumSet.of(ACCEPTED, REJECTED));
         ALLOWED.put(ACCEPTED, EnumSet.of(READY));
         ALLOWED.put(REJECTED, EnumSet.noneOf(OrderTaskStatus.class));
-        ALLOWED.put(READY, EnumSet.noneOf(OrderTaskStatus.class));
+        ALLOWED.put(READY, EnumSet.of(COMPLETED));
+        ALLOWED.put(COMPLETED, EnumSet.noneOf(OrderTaskStatus.class));
     }
 
     private OrderTaskStatusTransition() {

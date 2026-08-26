@@ -39,8 +39,8 @@ public class OrderEventPublisher {
         kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("order.created", new OrderUserPayload(orderId.toString(), userId.toString())));
     }
 
-    public void publishConfirmed(UUID orderId, UUID userId, UUID merchantId) {
-        var payload = new OrderConfirmedPayload(orderId.toString(), userId.toString(), merchantId.toString());
+    public void publishConfirmed(UUID orderId, UUID userId, UUID merchantId, BigDecimal totalAmount) {
+        var payload = new OrderConfirmedPayload(orderId.toString(), userId.toString(), merchantId.toString(), totalAmount.toString());
         kafkaTemplate.send(TOPIC, orderId.toString(), EventEnvelope.of("order.confirmed", payload));
     }
 
@@ -58,7 +58,7 @@ public class OrderEventPublisher {
     public record OrderUserPayload(String orderId, String userId) {
     }
 
-    public record OrderConfirmedPayload(String orderId, String userId, String merchantId) {
+    public record OrderConfirmedPayload(String orderId, String userId, String merchantId, String totalAmount) {
     }
 
     public record OrderCancelledPayload(String orderId, String userId, String totalAmount) {

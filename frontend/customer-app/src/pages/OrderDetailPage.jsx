@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { cancelOrder, getOrder } from '../api/order';
 import { createReview } from '../api/review';
 import { useProductImages } from '../hooks/useProductImages';
-import { ArrowLeftIcon, CheckCircleIcon, PackageIcon, StarIcon, TruckIcon } from '../components/Icons';
+import { ArrowLeftIcon, BanknoteIcon, CheckCircleIcon, CreditCardIcon, PackageIcon, PhoneIcon, StarIcon, TruckIcon, WalletIcon } from '../components/Icons';
 import StatusBadge from '../components/StatusBadge';
 import ShopBanner from '../components/ShopBanner';
 import ProductImage from '../components/ProductImage';
@@ -31,6 +31,13 @@ const HAPPY_PATH = [
 ];
 const TERMINAL_BAD = new Set(['PAYMENT_FAILED', 'CANCELLED', 'MERCHANT_REJECTED', 'REFUND_PENDING', 'REFUNDED']);
 const CANCELLABLE = new Set(['CREATED', 'PAYMENT_PENDING', 'CONFIRMED', 'MERCHANT_ACCEPTED']);
+
+const PAYMENT_LABELS = { WALLET: 'Wallet', RAZORPAY: 'Card / UPI', COD: 'Cash on Delivery' };
+const PAYMENT_ICONS = {
+  WALLET: <WalletIcon style={{ width: 16, height: 16 }} />,
+  RAZORPAY: <CreditCardIcon style={{ width: 16, height: 16 }} />,
+  COD: <BanknoteIcon style={{ width: 16, height: 16 }} />,
+};
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -114,7 +121,7 @@ export default function OrderDetailPage() {
         </div>
         <StatusBadge status={order.status} />
       </div>
-      <div style={{ marginBottom: 16 }}><ShopBanner merchantId={order.merchantId} /></div>
+      <ShopBanner merchantId={order.merchantId} />
 
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -144,6 +151,21 @@ export default function OrderDetailPage() {
         </div>
       )}
 
+      {order.riderName && (
+        <div className="card rider-card" style={{ marginBottom: 16 }}>
+          <div className="rider-card-avatar"><TruckIcon style={{ width: 18, height: 18 }} /></div>
+          <div style={{ flex: 1 }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>Delivery partner</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{order.riderName}</div>
+          </div>
+          {order.riderPhone && (
+            <a className="btn btn-secondary btn-sm" href={`tel:${order.riderPhone}`}>
+              <PhoneIcon style={{ width: 14, height: 14 }} /> {order.riderPhone}
+            </a>
+          )}
+        </div>
+      )}
+
       <div className="section-title"><span>Items</span></div>
       <div className="card" style={{ marginBottom: 16 }}>
         {order.items.map((item) => (
@@ -158,9 +180,12 @@ export default function OrderDetailPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontWeight: 700 }}>{formatMoney(item.lineTotal)}</span>
               {order.status === 'DELIVERED' && !reviewedIds.has(item.productId) && (
-                <button className="btn-ghost" onClick={() => setReviewing(reviewing === item.productId ? null : item.productId)}>
-                  Rate it
+                <button className="rate-it-btn" onClick={() => setReviewing(reviewing === item.productId ? null : item.productId)}>
+                  <StarIcon style={{ width: 13, height: 13 }} /> Rate it
                 </button>
+              )}
+              {reviewedIds.has(item.productId) && (
+                <span className="rated-badge"><CheckCircleIcon style={{ width: 13, height: 13 }} /> Rated</span>
               )}
             </div>
           </div>
@@ -189,6 +214,20 @@ export default function OrderDetailPage() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="section-title"><span>Payment</span></div>
+      <div className="card payment-summary-card" style={{ marginBottom: 16 }}>
+        <div className="payment-summary-row">
+          <div className="payment-summary-icon">{PAYMENT_ICONS[order.paymentMethod] || <CreditCardIcon style={{ width: 16, height: 16 }} />}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}</div>
+            <div className="muted">Placed {formatDateTime(order.createdAt)}</div>
+          </div>
+          <span className={`badge ${order.paid ? 'badge-success' : 'badge-muted'}`}>
+            {order.paid ? 'Paid' : order.paymentMethod === 'COD' ? 'Pay on delivery' : 'Unpaid'}
+          </span>
+        </div>
       </div>
 
       <div className="card summary-card">

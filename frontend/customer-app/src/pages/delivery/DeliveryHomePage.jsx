@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { acceptTask, delivered, getMe, goOffline, goOnline, myActiveTasks, pickedUp, rejectTask, updateLocation } from '../../api/delivery';
+import { getOrderForDelivery } from '../../api/order';
+import { useMerchantDirectory } from '../../hooks/useMerchantDirectory';
 import { getActiveTask, recordTask } from '../../utils/deliveryHistory';
-import { NavigationIcon, PackageIcon, TruckIcon } from '../../components/Icons';
+import { BanknoteIcon, CheckCircleIcon, NavigationIcon, PackageIcon, StoreIcon, TruckIcon } from '../../components/Icons';
 import { DeliveryIllustration } from '../../components/Illustrations';
 import StatusBadge from '../../components/StatusBadge';
+import { formatMoney } from '../../utils/format';
 
 const NEXT_ACTION = {
-  ASSIGNED: { label: 'Accept task', fn: acceptTask, next: 'ACCEPTED' },
-  ACCEPTED: { label: 'Mark picked up', fn: pickedUp, next: 'PICKED_UP' },
-  PICKED_UP: { label: 'Mark delivered', fn: delivered, next: 'DELIVERED' },
+  ASSIGNED: { label: 'Accept task', fn: acceptTask, next: 'ACCEPTED', toast: 'Task accepted' },
+  ACCEPTED: { label: 'Mark picked up', fn: pickedUp, next: 'PICKED_UP', toast: 'Marked picked up' },
+  PICKED_UP: { label: 'Mark delivered', fn: delivered, next: 'DELIVERED', toast: 'Delivered' },
 };
 
 const POLL_MS = 6000;
@@ -22,7 +25,11 @@ export default function DeliveryHomePage() {
   const [error, setError] = useState('');
   const [orderIdInput, setOrderIdInput] = useState('');
   const [activeTask, setActiveTask] = useState(getActiveTask());
+  const [orderInfo, setOrderInfo] = useState(null);
   const [acting, setActing] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [flash, setFlash] = useState(false);
+  const directory = useMerchantDirectory();
 
   function load() {
     getMe().then(setPartner).catch(() => setPartner(null)).finally(() => setLoading(false));
@@ -53,7 +60,7 @@ export default function DeliveryHomePage() {
           setActiveTask((prev) =>
             prev?.orderId === t.orderId && prev?.status === t.status
               ? prev
-              : { orderId: t.orderId, status: t.status, at: t.assignedAt || t.createdAt }
+              : { orderId: t.orderId, merchantId: t.merchantId, status: t.status, at: t.assignedAt || t.createdAt }
           );
         } else {
           setActiveTask((prev) => (prev ? null : prev));
@@ -67,6 +74,25 @@ export default function DeliveryHomePage() {
     const interval = setInterval(syncActiveTask, POLL_MS);
     return () => clearInterval(interval);
   }, [syncActiveTask]);
+
+  // What (if anything) needs collecting on handover — fetched once per task, not polled, since the payment method/paid state never changes mid-delivery.
+  useEffect(() => {
+    if (!activeTask?.orderId) {
+      setOrderInfo(null);
+      return;
+    }
+    getOrderForDelivery(activeTask.orderId).then(setOrderInfo).catch(() => setOrderInfo(null));
+  }, [activeTask?.orderId]);
+
+  function showToast(title, subtitle) {
+    setToast({ title, subtitle });
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  function flashCard() {
+    setFlash(true);
+    setTimeout(() => setFlash(false), 900);
+  }
 
   async function handleToggleOnline() {
     setToggling(true);
@@ -136,6 +162,8 @@ export default function DeliveryHomePage() {
     try {
       await action.fn(activeTask.orderId);
       recordTask(activeTask.orderId, action.next);
+      flashCard();
+      showToast(action.toast, `Order #${activeTask.orderId.slice(0, 8)}`);
       setActiveTask(action.next === 'DELIVERED' ? null : { ...activeTask, status: action.next });
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not update this task.');
@@ -151,6 +179,7 @@ export default function DeliveryHomePage() {
     try {
       await rejectTask(activeTask.orderId);
       recordTask(activeTask.orderId, 'REJECTED');
+      showToast('Task rejected', `Order #${activeTask.orderId.slice(0, 8)}`);
       setActiveTask(null);
     } catch {
       setError('Could not reject this task.');
@@ -162,9 +191,20 @@ export default function DeliveryHomePage() {
   if (loading) return <div className="page-loading"><span className="spinner" /> Loading…</div>;
 
   const online = partner?.status === 'ONLINE';
+  const storeName = activeTask?.merchantId ? directory.get(activeTask.merchantId)?.storeName : null;
 
   return (
     <div className="delivery-page">
+      {toast && (
+        <div className="new-order-toast">
+          <span className="new-order-toast-icon"><CheckCircleIcon style={{ width: 16, height: 16 }} /></span>
+          <div>
+            <div style={{ fontWeight: 700 }}>{toast.title}</div>
+            <div className="muted">{toast.subtitle}</div>
+          </div>
+        </div>
+      )}
+
       <div className="delivery-status-card card">
         <div>
           <div className={`online-dot ${online ? 'on' : ''}`} />
@@ -189,7 +229,7 @@ export default function DeliveryHomePage() {
       <div className="section-title"><span>Active task</span></div>
 
       {activeTask ? (
-        <div className="card active-task-card">
+        <div className={`card active-task-card ${flash ? 'action-flash' : ''}`}>
           <div className="active-task-head">
             <div className="stat-icon"><PackageIcon style={{ width: 18, height: 18 }} /></div>
             <div>
@@ -197,6 +237,29 @@ export default function DeliveryHomePage() {
               <StatusBadge status={activeTask.status} />
             </div>
           </div>
+
+          {storeName && (
+            <div className="active-task-store">
+              <StoreIcon style={{ width: 14, height: 14 }} /> Pick up from <strong>{storeName}</strong>
+            </div>
+          )}
+
+          {orderInfo && (
+            <div className={`collect-banner ${orderInfo.paid ? 'paid' : 'unpaid'}`}>
+              {orderInfo.paid ? (
+                <>
+                  <CheckCircleIcon style={{ width: 16, height: 16 }} />
+                  <span>Already paid — nothing to collect from the customer.</span>
+                </>
+              ) : (
+                <>
+                  <BanknoteIcon style={{ width: 16, height: 16 }} />
+                  <span>Collect <strong>{formatMoney(orderInfo.totalAmount)}</strong> (cash or UPI) from the customer on delivery.</span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="merchant-order-actions" style={{ marginTop: 14 }}>
             {activeTask.status === 'ASSIGNED' && (
               <button className="btn btn-secondary btn-sm" onClick={handleRejectTask} disabled={acting}>Reject</button>

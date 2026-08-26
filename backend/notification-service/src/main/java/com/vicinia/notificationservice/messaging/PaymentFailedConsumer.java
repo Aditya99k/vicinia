@@ -1,6 +1,7 @@
 package com.vicinia.notificationservice.messaging;
 
 import com.vicinia.notificationservice.service.NotificationService;
+import com.vicinia.notificationservice.util.IdFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.DltHandler;
@@ -38,7 +39,8 @@ public class PaymentFailedConsumer {
         String amount = (String) envelope.payload().get("amount");
         notificationService.record(envelope.eventId(), envelope.eventType(), userId,
                 "Payment failed",
-                "Payment of " + amount + " for order " + orderId + " could not be completed.");
+                "Payment of ₹" + amount + " for order #" + IdFormat.shorten(orderId) + " could not be completed.",
+                orderId);
     }
 
     @DltHandler

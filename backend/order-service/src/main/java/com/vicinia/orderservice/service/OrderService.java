@@ -85,7 +85,9 @@ public class OrderService {
             throw new CartHasUnavailableItemsException();
         }
 
-        Order order = createOrder(userId, cart);
+        PaymentMethod method = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.WALLET;
+
+        Order order = createOrder(userId, cart, method);
         eventPublisher.publishCreated(order.getId(), userId);
 
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
@@ -107,11 +109,16 @@ public class OrderService {
 
         order = markPaymentPending(order);
 
-        PaymentMethod method = request.paymentMethod() != null ? request.paymentMethod() : PaymentMethod.WALLET;
-
         if (method == PaymentMethod.RAZORPAY) {
             var razorpayOrder = paymentClient.createRazorpayOrder(userId, order.getId(), order.getTotalAmount());
             return new PlaceOrderResult(order, razorpayOrder.razorpayOrderId(), razorpayOrder.razorpayKeyId());
+        }
+
+        if (method == PaymentMethod.COD) {
+            inventoryClient.confirm(order.getId());
+            Order confirmed = markConfirmed(order);
+            eventPublisher.publishConfirmed(confirmed.getId(), userId, confirmed.getMerchantId(), confirmed.getTotalAmount());
+            return PlaceOrderResult.wallet(confirmed);
         }
 
         boolean paid = paymentClient.payWithWallet(userId, order.getId(), order.getTotalAmount());
@@ -121,8 +128,9 @@ public class OrderService {
         }
 
         inventoryClient.confirm(order.getId());
+        order.markPaid();
         Order confirmed = markConfirmed(order);
-        eventPublisher.publishConfirmed(confirmed.getId(), userId, confirmed.getMerchantId());
+        eventPublisher.publishConfirmed(confirmed.getId(), userId, confirmed.getMerchantId(), confirmed.getTotalAmount());
         return PlaceOrderResult.wallet(confirmed);
     }
 
@@ -140,8 +148,9 @@ public class OrderService {
             return;
         }
         inventoryClient.confirm(orderId);
+        order.markPaid();
         Order confirmed = markConfirmed(order);
-        eventPublisher.publishConfirmed(confirmed.getId(), confirmed.getUserId(), confirmed.getMerchantId());
+        eventPublisher.publishConfirmed(confirmed.getId(), confirmed.getUserId(), confirmed.getMerchantId(), confirmed.getTotalAmount());
     }
 
     public void failFromPaymentEvent(UUID orderId) {
@@ -255,6 +264,11 @@ public class OrderService {
         return order;
     }
 
+    /** No per-partner ownership check — see OrderDeliveryViewResponse's own comment for why. */
+    public Order getForDelivery(UUID orderId) {
+        return orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
     /**
      * Only reachable, pre-delivery states per BUILD_TRACKER's "cancel order
      * endpoint (pre-delivery states only)" — the transition guard itself
@@ -282,8 +296,8 @@ public class OrderService {
 
     // --- small, single-save steps (see class comment for why each is exactly one save() call) ---
 
-    Order createOrder(UUID userId, CartClient.CartView cart) {
-        Order order = new Order(userId, cart.merchantId(), cart.subtotal());
+    Order createOrder(UUID userId, CartClient.CartView cart, PaymentMethod paymentMethod) {
+        Order order = new Order(userId, cart.merchantId(), cart.subtotal(), paymentMethod);
         for (CartClient.CartLine line : cart.items()) {
             order.addItem(new OrderItem(line.listingId(), line.productId(), line.productName(), line.price(), line.quantity()));
         }

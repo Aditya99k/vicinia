@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { listAddresses } from '../api/user';
-import { getWalletBalance } from '../api/payment';
-import { placeOrder } from '../api/order';
-import { getOrder } from '../api/order';
-import { CreditCardIcon, MapPinIcon, WalletIcon } from '../components/Icons';
+import { getWalletBalance, verifyRazorpayPayment } from '../api/payment';
+import { getOrder, placeOrder } from '../api/order';
+import { BanknoteIcon, CreditCardIcon, MapPinIcon, WalletIcon } from '../components/Icons';
 import ShopBanner from '../components/ShopBanner';
 import { formatMoney } from '../utils/format';
 
@@ -43,13 +42,13 @@ export default function CheckoutPage() {
   const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
   const insufficientWallet = balance != null && method === 'WALLET' && Number(balance.balance) < subtotal;
 
-  async function pollUntilResolved(orderId, attempts = 20) {
+  async function pollUntilResolved(orderId, attempts = 6) {
     for (let i = 0; i < attempts; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
       const order = await getOrder(orderId);
       if (order.status !== 'PAYMENT_PENDING' && order.status !== 'CREATED') {
         return order;
       }
+      await new Promise((r) => setTimeout(r, 1000));
     }
     return getOrder(orderId);
   }
@@ -68,8 +67,25 @@ export default function CheckoutPage() {
           name: 'Vicinia',
           description: `Order ${order.id}`,
           theme: { color: '#F8C200' },
-          handler: async () => {
+          handler: async (response) => {
             setWaitingForPayment(true);
+            try {
+              // The webhook this otherwise relies on can only ever reach a
+              // publicly-hosted deployment — Razorpay's servers can't call
+              // back into a local dev stack — so this verifies the same
+              // signature server-side right from the browser's own success
+              // callback instead of waiting on an inbound call that will
+              // never arrive here.
+              await verifyRazorpayPayment({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+            } catch {
+              // Falls through to polling below regardless — a real webhook
+              // racing this (or arriving instead of it) still resolves the
+              // order; verify failing here doesn't strand the customer.
+            }
             const resolved = await pollUntilResolved(order.id);
             await refresh();
             navigate(`/orders/${resolved.id}`);
@@ -97,7 +113,7 @@ export default function CheckoutPage() {
   return (
     <div className="checkout-page">
       <h1 style={{ fontSize: 22, marginBottom: 4 }}>Checkout</h1>
-      <div style={{ marginBottom: 16 }}><ShopBanner merchantId={cart?.merchantId} /></div>
+      <ShopBanner merchantId={cart?.merchantId} />
 
       <div className="cart-layout">
         <div>
@@ -137,6 +153,14 @@ export default function CheckoutPage() {
                 <div>
                   <div className="title">Card / UPI (Razorpay)</div>
                   <div className="muted">Test mode — no real money moves</div>
+                </div>
+              </label>
+              <label className={`payment-option ${method === 'COD' ? 'selected' : ''}`}>
+                <input type="radio" name="method" checked={method === 'COD'} onChange={() => setMethod('COD')} />
+                <BanknoteIcon style={{ width: 18, height: 18 }} />
+                <div>
+                  <div className="title">Cash on Delivery</div>
+                  <div className="muted">Pay the delivery partner in cash or UPI on arrival</div>
                 </div>
               </label>
             </div>

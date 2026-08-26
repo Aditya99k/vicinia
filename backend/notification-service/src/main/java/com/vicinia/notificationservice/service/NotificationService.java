@@ -18,12 +18,12 @@ public class NotificationService {
     }
 
     /** Idempotent on eventId — a redelivered Kafka message (retry, rebalance) never produces a second notification. */
-    public void record(String eventId, String eventType, String recipientUserId, String subject, String body) {
+    public void record(String eventId, String eventType, String recipientUserId, String subject, String body, String referenceId) {
         if (repository.existsByEventId(eventId)) {
             return;
         }
         sender.send(recipientUserId, subject, body);
-        repository.save(new Notification(eventId, eventType, recipientUserId, subject, body));
+        repository.save(new Notification(eventId, eventType, recipientUserId, subject, body, referenceId));
     }
 
     public List<Notification> mine(String recipientUserId) {

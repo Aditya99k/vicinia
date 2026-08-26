@@ -19,10 +19,14 @@ public record OrderResponse(
         String couponCode,
         BigDecimal totalAmount,
         String cancellationReason,
+        PaymentMethod paymentMethod,
+        boolean paid,
         Instant createdAt,
         Instant updatedAt,
         String razorpayOrderId,
-        String razorpayKeyId
+        String razorpayKeyId,
+        String riderName,
+        String riderPhone
 ) {
     public static OrderResponse from(Order order) {
         return from(PlaceOrderResult.wallet(order));
@@ -35,8 +39,19 @@ public record OrderResponse(
                 order.getItems().stream().map(OrderItemResponse::from).toList(),
                 order.getSubtotal(), order.getDiscountAmount(), order.getCouponCode(),
                 order.getTotalAmount(), order.getCancellationReason(),
+                order.getPaymentMethod(), order.isPaid(),
                 order.getCreatedAt(), order.getUpdatedAt(),
-                result.razorpayOrderId(), result.razorpayKeyId()
+                result.razorpayOrderId(), result.razorpayKeyId(),
+                null, null
+        );
+    }
+
+    /** Copy-with for the one enrichment that needs a second, cross-service round trip (RiderClient) — deliberately not part of the base mapping above, which stays a pure, network-free projection of Order. */
+    public OrderResponse withRider(String riderName, String riderPhone) {
+        return new OrderResponse(
+                id, userId, merchantId, status, items, subtotal, discountAmount, couponCode,
+                totalAmount, cancellationReason, paymentMethod, paid, createdAt, updatedAt,
+                razorpayOrderId, razorpayKeyId, riderName, riderPhone
         );
     }
 }

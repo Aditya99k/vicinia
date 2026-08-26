@@ -19,3 +19,7 @@ export function cancelOrder(id, reason) {
 export function getOrderForMerchant(id) {
   return apiClient.get(`/api/orders/${id}/merchant-view`).then((r) => r.data);
 }
+
+export function getOrderForDelivery(id) {
+  return apiClient.get(`/api/orders/${id}/delivery-view`).then((r) => r.data);
+}

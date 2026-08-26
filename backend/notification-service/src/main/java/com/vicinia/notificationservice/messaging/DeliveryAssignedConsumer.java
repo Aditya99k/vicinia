@@ -1,6 +1,7 @@
 package com.vicinia.notificationservice.messaging;
 
 import com.vicinia.notificationservice.service.NotificationService;
+import com.vicinia.notificationservice.util.IdFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.DltHandler;
@@ -40,7 +41,8 @@ public class DeliveryAssignedConsumer {
         String partnerId = (String) envelope.payload().get("partnerId");
         notificationService.record(envelope.eventId(), envelope.eventType(), partnerId,
                 "New pickup assigned",
-                "You've been assigned order " + orderId + " for pickup.");
+                "You've been assigned order #" + IdFormat.shorten(orderId) + " for pickup.",
+                orderId);
     }
 
     @DltHandler

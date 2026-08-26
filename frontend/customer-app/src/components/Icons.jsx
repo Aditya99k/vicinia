@@ -173,6 +173,16 @@ export function WalletIcon(props) {
   );
 }
 
+export function BanknoteIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2.5" y="6.5" width="19" height="11" rx="2" />
+      <circle cx="12" cy="12" r="2.6" />
+      <path d="M6 9v.01M18 15v.01" />
+    </svg>
+  );
+}
+
 export function TicketIcon(props) {
   return (
     <svg {...base} {...props}>

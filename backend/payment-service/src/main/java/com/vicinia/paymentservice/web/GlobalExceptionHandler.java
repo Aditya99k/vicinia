@@ -1,5 +1,6 @@
 package com.vicinia.paymentservice.web;
 
+import com.vicinia.paymentservice.exception.ForbiddenException;
 import com.vicinia.paymentservice.exception.InsufficientBalanceException;
 import com.vicinia.paymentservice.exception.RazorpayPaymentNotFoundException;
 import com.vicinia.paymentservice.exception.RazorpaySignatureInvalidException;
@@ -36,6 +37,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RazorpaySignatureInvalidException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidSignature(RuntimeException e) {
         return body(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(RuntimeException e) {
+        return body(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

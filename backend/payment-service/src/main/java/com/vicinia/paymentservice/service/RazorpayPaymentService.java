@@ -7,6 +7,7 @@ import com.vicinia.paymentservice.client.RazorpayClient;
 import com.vicinia.paymentservice.domain.RazorpayPayment;
 import com.vicinia.paymentservice.domain.RazorpayPaymentStatus;
 import com.vicinia.paymentservice.dto.RazorpayOrderResponse;
+import com.vicinia.paymentservice.exception.ForbiddenException;
 import com.vicinia.paymentservice.exception.RazorpayPaymentNotFoundException;
 import com.vicinia.paymentservice.exception.RazorpaySignatureInvalidException;
 import com.vicinia.paymentservice.messaging.PaymentEventPublisher;
@@ -34,16 +35,19 @@ public class RazorpayPaymentService {
     private final RazorpayClient razorpayClient;
     private final PaymentEventPublisher eventPublisher;
     private final String webhookSecret;
+    private final String keySecret;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RazorpayPaymentService(RazorpayPaymentRepository repository,
                                    RazorpayClient razorpayClient,
                                    PaymentEventPublisher eventPublisher,
-                                   @Value("${vicinia.razorpay.webhook-secret}") String webhookSecret) {
+                                   @Value("${vicinia.razorpay.webhook-secret}") String webhookSecret,
+                                   @Value("${vicinia.razorpay.key-secret}") String keySecret) {
         this.repository = repository;
         this.razorpayClient = razorpayClient;
         this.eventPublisher = eventPublisher;
         this.webhookSecret = webhookSecret;
+        this.keySecret = keySecret;
     }
 
     /** Idempotent on orderId — a retried create-order call returns the same Razorpay order rather than creating a second one Razorpay-side. */
@@ -93,6 +97,40 @@ public class RazorpayPaymentService {
                 ? RazorpayPaymentStatus.SUCCESS
                 : RazorpayPaymentStatus.FAILED;
 
+        resolve(payment, targetStatus, razorpayPaymentId);
+    }
+
+    /**
+     * The client-side counterpart to handleWebhook, for environments where
+     * Razorpay's real servers can't reach this service's webhook at all —
+     * a local dev stack has no public URL, so the webhook this project
+     * otherwise relies on (ARCHITECTURE.md §4.6) never arrives and an
+     * order sits at PAYMENT_PENDING forever even though checkout.js's own
+     * modal already reported success. This verifies the same way Razorpay
+     * documents for client-side confirmation — HMAC-SHA256 over
+     * "{order_id}|{payment_id}" keyed with the account's key SECRET (not
+     * the separate webhook secret used above) — so it's exactly as trusted
+     * as the webhook path, just triggered by the browser's own callback
+     * instead of an inbound call. tryResolve's atomic guard means it's
+     * harmless if a real webhook also arrives later and races this.
+     */
+    @Transactional
+    public void verifyAndResolve(UUID userId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
+        RazorpayPayment payment = repository.findByRazorpayOrderId(razorpayOrderId)
+                .orElseThrow(() -> new RazorpayPaymentNotFoundException(razorpayOrderId));
+        if (!payment.getUserId().equals(userId)) {
+            throw new ForbiddenException("This payment does not belong to you");
+        }
+
+        String toSign = razorpayOrderId + "|" + razorpayPaymentId;
+        if (!isValidSignature(toSign, razorpaySignature, keySecret)) {
+            throw new RazorpaySignatureInvalidException();
+        }
+
+        resolve(payment, RazorpayPaymentStatus.SUCCESS, razorpayPaymentId);
+    }
+
+    private void resolve(RazorpayPayment payment, RazorpayPaymentStatus targetStatus, String razorpayPaymentId) {
         int updated = repository.tryResolve(payment.getId(), targetStatus, razorpayPaymentId);
         if (updated == 0) {
             return;
@@ -105,26 +143,31 @@ public class RazorpayPaymentService {
         }
     }
 
-    /**
-     * Verifies against the exact raw request body bytes, not a
-     * re-serialized version of a parsed object — Razorpay computes its
-     * signature over the literal bytes it sent, and re-serializing (even a
-     * semantically identical JSON tree) can silently change whitespace or
-     * key order and break verification. MessageDigest.isEqual is a
-     * constant-time comparison — a webhook signature is exactly the kind
-     * of check where a timing side-channel is a real, documented concern.
-     */
+    /** The webhook's own signature, over the exact raw request body bytes — Razorpay computes it over the literal bytes it sent, and re-serializing (even a semantically identical JSON tree) can silently change whitespace or key order and break verification. */
     private boolean isValidSignature(String rawBody, String signature) {
+        return isValidSignature(rawBody, signature, webhookSecret);
+    }
+
+    /**
+     * Shared HMAC-SHA256 check for both the webhook (message = raw body,
+     * secret = webhook secret) and client-side verify (message =
+     * "{order_id}|{payment_id}", secret = the account's key secret) —
+     * Razorpay uses the same algorithm for both, just different messages
+     * and keys. MessageDigest.isEqual is a constant-time comparison — this
+     * is exactly the kind of check where a timing side-channel is a real,
+     * documented concern.
+     */
+    private boolean isValidSignature(String message, String signature, String secret) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] hash = mac.doFinal(rawBody.getBytes(StandardCharsets.UTF_8));
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
             String computed = HexFormat.of().formatHex(hash);
             return MessageDigest.isEqual(
                     computed.getBytes(StandardCharsets.UTF_8),
                     signature.getBytes(StandardCharsets.UTF_8));
         } catch (NoSuchAlgorithmException | java.security.InvalidKeyException e) {
-            throw new IllegalStateException("Failed to compute webhook signature", e);
+            throw new IllegalStateException("Failed to compute signature", e);
         }
     }
 }

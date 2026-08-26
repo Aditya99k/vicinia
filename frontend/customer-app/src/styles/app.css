@@ -365,7 +365,7 @@
 .shop-banner {
   display: inline-flex; align-items: center; gap: 10px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-pill);
-  padding: 6px 14px 6px 6px;
+  padding: 6px 14px 6px 6px; margin-bottom: 16px;
 }
 .shop-banner .merchant-tile-icon { width: 28px; height: 28px; }
 .shop-banner .merchant-tile-icon svg { width: 14px; height: 14px; }
@@ -511,7 +511,7 @@
 .tab-row button.active { color: var(--ink); border-bottom-color: var(--brand); }
 
 /* ============ Product grid / search ============ */
-.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
 .product-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s ease, transform 0.1s ease; }
 .product-card:hover { border-color: var(--ink); transform: translateY(-2px); }
 .product-card-image { aspect-ratio: 1; background: var(--surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -625,6 +625,20 @@
 .stars-input button { background: none; border: none; cursor: pointer; padding: 2px; }
 .review-form textarea { border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13px; background: var(--bg); color: var(--ink); resize: vertical; font-family: inherit; }
 
+.rate-it-btn {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  background: var(--warn-soft); color: var(--warn);
+  border: none; border-radius: var(--radius-pill); padding: 7px 13px;
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, color 0.15s ease;
+}
+.rate-it-btn:hover { background: var(--warn); color: var(--surface); }
+.rate-it-btn:active { transform: scale(0.97); }
+.rated-badge {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  color: var(--success); font-weight: 700; font-size: 12px;
+}
+
 /* ============ Cart / checkout ============ */
 .cart-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
 @media (max-width: 860px) { .cart-layout { grid-template-columns: 1fr; } }
@@ -645,6 +659,17 @@
 .summary-card .summary-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 5px 0; }
 .summary-card .summary-row.discount { color: var(--success); }
 .summary-card .summary-row.total { font-weight: 800; font-size: 15px; color: var(--ink); border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
+
+.rider-card { display: flex; align-items: center; gap: 12px; }
+.rider-card-avatar {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--brand-soft); color: var(--on-brand-soft);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.payment-summary-row { display: flex; align-items: center; gap: 12px; }
+.payment-summary-icon {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); color: var(--ink);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
 
 .payment-options { display: flex; flex-direction: column; gap: 10px; }
 .payment-option { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
@@ -741,6 +766,35 @@
 }
 @keyframes toast-in { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+.cart-added-toast {
+  position: fixed; top: 76px; right: 24px; z-index: 70; width: 300px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop); padding: 14px;
+  animation: cart-toast-in 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes cart-toast-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.cart-added-toast-head { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+.cart-added-toast-close { margin-left: auto; background: none; border: none; color: var(--faint); cursor: pointer; font-size: 12px; padding: 2px; }
+.cart-added-toast-item { display: flex; align-items: center; gap: 10px; }
+.cart-added-toast-thumb { width: 44px; height: 44px; border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cart-added-toast-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cart-added-toast-item .name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cart-added-toast-summary { font-size: 11.5px; margin: 10px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.cart-added-toast-actions { display: flex; gap: 8px; }
+.cart-added-toast-actions .btn { flex: 1; }
+
+.merchant-order-card.action-flash, .active-task-card.action-flash { animation: card-flash 0.9s ease-out; }
+@keyframes card-flash {
+  0% { box-shadow: 0 0 0 0 var(--success-soft); border-color: var(--success); }
+  60% { box-shadow: 0 0 0 8px var(--success-soft); border-color: var(--success); }
+  100% { box-shadow: 0 0 0 0 transparent; border-color: var(--line); }
+}
+.merchant-order-card.awaiting-pickup { border: 1.5px dashed var(--brand); background: var(--brand-soft); }
+.pickup-waiting-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+  font-size: 12px; font-weight: 700; color: var(--on-brand-soft);
+}
+
 /* ============ Delivery app ============ */
 .delivery-page { max-width: 560px; margin: 0 auto; }
 .delivery-status-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -748,4 +802,12 @@
 .online-dot.on { background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
 .active-task-card { display: flex; flex-direction: column; }
 .active-task-head { display: flex; align-items: center; gap: 12px; }
+.active-task-store { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+.collect-banner {
+  display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px;
+}
+.collect-banner.unpaid { background: var(--warn-soft); color: var(--warn); }
+.collect-banner.paid { background: var(--success-soft); color: var(--success); }
+.collect-banner strong { color: inherit; }
 

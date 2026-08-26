@@ -38,7 +38,8 @@ public class UserRegisteredConsumer {
         String email = (String) envelope.payload().get("email");
         notificationService.record(envelope.eventId(), envelope.eventType(), userId,
                 "Welcome to Vicinia",
-                "Hi, your account (" + email + ") is ready. Start browsing nearby stores.");
+                "Hi, your account (" + email + ") is ready. Start browsing nearby stores.",
+                null);
     }
 
     @DltHandler

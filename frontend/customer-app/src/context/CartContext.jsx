@@ -9,6 +9,7 @@ export function CartProvider({ children }) {
   const { auth, isAuthenticated } = useAuth();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lastAdded, setLastAdded] = useState(null);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated || primaryRole(auth) !== 'CUSTOMER') {
@@ -33,6 +34,11 @@ export function CartProvider({ children }) {
   const addItem = useCallback(async (listingId, quantity) => {
     const data = await cartApi.addItem({ listingId, quantity });
     setCart(data);
+    const item = data.items?.find((i) => i.listingId === listingId);
+    // A fresh object every time (even re-adding the same listing) so the
+    // toast component's effect fires again instead of seeing an unchanged
+    // reference and staying silent on a second add of the same item.
+    setLastAdded(item ? { item, at: Date.now() } : null);
     return data;
   }, []);
 
@@ -56,7 +62,7 @@ export function CartProvider({ children }) {
 
   const itemCount = (cart?.items || []).reduce((sum, i) => sum + i.quantity, 0);
 
-  const value = { cart, itemCount, loading, refresh, addItem, updateItem, removeItem, clear };
+  const value = { cart, itemCount, loading, refresh, addItem, updateItem, removeItem, clear, lastAdded };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -1,5 +1,6 @@
 package com.vicinia.orderservice.domain;
 
+import com.vicinia.orderservice.dto.PaymentMethod;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,6 +52,12 @@ public class Order {
 
     private String cancellationReason;
 
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
+    /** True once real money has actually moved — WALLET/RAZORPAY as soon as that payment succeeds, never for COD (collected in person by the delivery partner, outside anything this system tracks). */
+    private boolean paid = false;
+
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -60,11 +67,12 @@ public class Order {
     protected Order() {
     }
 
-    public Order(UUID userId, UUID merchantId, BigDecimal subtotal) {
+    public Order(UUID userId, UUID merchantId, BigDecimal subtotal, PaymentMethod paymentMethod) {
         this.userId = userId;
         this.merchantId = merchantId;
         this.subtotal = subtotal;
         this.totalAmount = subtotal;
+        this.paymentMethod = paymentMethod;
     }
 
     public void addItem(OrderItem item) {
@@ -126,6 +134,19 @@ public class Order {
 
     public String getCancellationReason() {
         return cancellationReason;
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public boolean isPaid() {
+        return paid;
+    }
+
+    public void markPaid() {
+        this.paid = true;
+        this.updatedAt = Instant.now();
     }
 
     public Instant getCreatedAt() {

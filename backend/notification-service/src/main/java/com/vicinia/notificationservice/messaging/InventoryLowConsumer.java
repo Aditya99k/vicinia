@@ -41,7 +41,8 @@ public class InventoryLowConsumer {
         Object availableStock = envelope.payload().get("availableStock");
         notificationService.record(envelope.eventId(), envelope.eventType(), merchantId,
                 "Low stock alert",
-                "Product " + productId + " is running low (" + availableStock + " left) — consider restocking.");
+                "One of your listings is running low (" + availableStock + " left) — consider restocking.",
+                productId);
     }
 
     @DltHandler
