@@ -184,12 +184,35 @@ class FullOrderLifecycleE2ETest {
         return post("/api/auth/login", null, "{\"email\":\"" + email + "\",\"password\":\"TestPass123\"}");
     }
 
+    private static final int MAX_503_RETRIES = 5;
+
+    /**
+     * 503 straight from api-gateway, right after a service has only just
+     * started, almost always means Spring Cloud LoadBalancer's own
+     * client-side view of Eureka hasn't caught up yet — a real, previously
+     * observed race (BUILD_TRACKER.md's Stage 4 notes), distinct from
+     * start-infra.sh's own Eureka-registry-snapshot retry: that verifies
+     * Eureka's registry directly, not the gateway's separate, independently
+     * refreshed load-balancer cache, which is what this is actually
+     * waiting out. A short, bounded retry on 503 specifically — never on
+     * any other status, which would mask a real failure — is the fix, the
+     * same "brief warm-up, not a bug" reasoning as that snapshot loop.
+     */
+    private HttpResponse<String> sendWithRetry(HttpRequest request) throws Exception {
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        for (int attempt = 0; response.statusCode() == 503 && attempt < MAX_503_RETRIES; attempt++) {
+            Thread.sleep(1500);
+            response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        }
+        return response;
+    }
+
     private JsonNode get(String path, String token) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(BASE_URL + path)).GET();
         if (token != null) {
             builder.header("Authorization", "Bearer " + token);
         }
-        HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = sendWithRetry(builder.build());
         assertThat(response.statusCode()).as("GET %s -> %s", path, response.body()).isBetween(200, 299);
         return json.readTree(response.body());
     }
@@ -201,7 +224,7 @@ class FullOrderLifecycleE2ETest {
         if (token != null) {
             builder.header("Authorization", "Bearer " + token);
         }
-        HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = sendWithRetry(builder.build());
         assertThat(response.statusCode()).as("POST %s -> %s", path, response.body()).isBetween(200, 299);
         String responseBody = response.body();
         return responseBody == null || responseBody.isBlank() ? json.createObjectNode() : json.readTree(responseBody);
@@ -212,7 +235,7 @@ class FullOrderLifecycleE2ETest {
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + token)
                 .PUT(HttpRequest.BodyPublishers.ofString(body));
-        HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = sendWithRetry(builder.build());
         assertThat(response.statusCode()).as("PUT %s -> %s", path, response.body()).isBetween(200, 299);
         return json.readTree(response.body());
     }
