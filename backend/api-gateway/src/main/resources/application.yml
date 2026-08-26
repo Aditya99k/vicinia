@@ -49,6 +49,11 @@ spring:
           '[/**]':
             allowedOriginPatterns:
               - "http://*:5173"
+              # Stage 20: the frontend's production home (docs/DEPLOYMENT.md
+              # §4) — *.pages.dev covers whatever exact subdomain Cloudflare
+              # Pages assigns the project without needing to know it ahead
+              # of time. A later custom domain is a one-line addition here.
+              - "https://*.pages.dev"
             allowedMethods:
               - GET
               - POST

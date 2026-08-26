@@ -1,0 +1,329 @@
+# Vicinia — production stack (Stage 19/20, docs/DEPLOYMENT.md / BUILD_TRACKER.md).
+#
+# Everything compute-bound runs on one Oracle Cloud Always Free VM via this
+# file: self-hosted Postgres (9 logical DBs, one instance), Redis, Redpanda
+# (Kafka-protocol-compatible), all 16 Spring Boot services, and cloudflared
+# (Cloudflare Tunnel — exposes api-gateway publicly with free TLS, no
+# inbound firewall port opened on the VM). MongoDB stays on Atlas (managed,
+# free, not self-hosted — see .env's MONGODB_ATLAS_* vars); Cloudinary and
+# Razorpay are already-external SaaS regardless of where this runs.
+#
+# Distinct from docker-compose.infra.yml (local dev: data layer only, app
+# services run on the host via `mvn spring-boot:run`) — this file
+# containerizes the app services too, so Redpanda advertises its own
+# container hostname (redpanda:9092) instead of localhost, and every
+# service's localhost-pointing application.yml defaults are overridden via
+# environment variables below (Spring Boot's relaxed env-var binding —
+# zero code/YAML changes needed in any service).
+#
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+# Secrets come from .env (gitignored), loaded automatically since it sits
+# next to this file — copy the real one onto the VM, never commit it.
+
+x-spring-common: &spring-common
+  SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+  VICINIA_INTERNAL_SECRET: ${VICINIA_INTERNAL_SECRET}
+  VICINIA_JWT_SECRET: ${VICINIA_JWT_SECRET}
+
+x-postgres-app: &postgres-app
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-kafka-app: &kafka-app
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+
+x-app-defaults: &app-defaults
+  restart: unless-stopped
+  mem_limit: 220m
+  networks: [vicinia]
+
+services:
+  # ── Data layer ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - vicinia-postgres-data:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 250m
+    networks: [vicinia]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - vicinia-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 80m
+    networks: [vicinia]
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=450M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      # Containerized services on the same Docker network, unlike local
+      # dev's docker-compose.infra.yml (which advertises localhost because
+      # app services run on the host there) — see this file's header.
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr=PLAINTEXT://0.0.0.0:8082
+      - --advertise-pandaproxy-addr=PLAINTEXT://redpanda:8082
+      - --schema-registry-addr=PLAINTEXT://0.0.0.0:8081
+    volumes:
+      - vicinia-redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    mem_limit: 500m
+    networks: [vicinia]
+
+  # ── Platform services ───────────────────────────────────────────────
+  discovery-server:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: discovery-server } }
+    image: ghcr.io/aditya99k/vicinia-discovery-server:latest
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  config-server:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: config-server } }
+    image: ghcr.io/aditya99k/vicinia-config-server:latest
+    depends_on:
+      discovery-server: { condition: service_healthy }
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  api-gateway:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: api-gateway } }
+    image: ghcr.io/aditya99k/vicinia-api-gateway:latest
+    mem_limit: 250m
+    depends_on:
+      config-server: { condition: service_healthy }
+    environment:
+      <<: *spring-common
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  # ── Domain services (Postgres + Kafka) ──────────────────────────────
+  auth-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: auth-service } }
+    image: ghcr.io/aditya99k/vicinia-auth-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+  user-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: user-service } }
+    image: ghcr.io/aditya99k/vicinia-user-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_db
+
+  merchant-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: merchant-service } }
+    image: ghcr.io/aditya99k/vicinia-merchant-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/merchant_db
+
+  inventory-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: inventory-service } }
+    image: ghcr.io/aditya99k/vicinia-inventory-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/inventory_db
+
+  coupon-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: coupon-service } }
+    image: ghcr.io/aditya99k/vicinia-coupon-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/coupon_db
+
+  payment-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: payment-service } }
+    image: ghcr.io/aditya99k/vicinia-payment-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+
+  order-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: order-service } }
+    image: ghcr.io/aditya99k/vicinia-order-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_db
+
+  delivery-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: delivery-service } }
+    image: ghcr.io/aditya99k/vicinia-delivery-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/delivery_db
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+  settlement-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: settlement-service } }
+    image: ghcr.io/aditya99k/vicinia-settlement-service:latest
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *postgres-app, *kafka-app]
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/settlement_db
+
+  # ── Domain services (Redis + Kafka, no Postgres) ────────────────────
+  cart-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: cart-service } }
+    image: ghcr.io/aditya99k/vicinia-cart-service:latest
+    depends_on:
+      redis: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *kafka-app]
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+  # ── Domain services (MongoDB Atlas + Kafka) ─────────────────────────
+  catalog-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: catalog-service } }
+    image: ghcr.io/aditya99k/vicinia-catalog-service:latest
+    depends_on:
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *kafka-app]
+      MONGODB_URI: mongodb+srv://${MONGODB_ATLAS_USER}:${MONGODB_ATLAS_PASSWORD}@${MONGODB_ATLAS_HOST}/catalog_db?appName=${MONGODB_ATLAS_APP_NAME}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+
+  notification-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: notification-service } }
+    image: ghcr.io/aditya99k/vicinia-notification-service:latest
+    depends_on:
+      redpanda: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    environment:
+      <<: [*spring-common, *kafka-app]
+      MONGODB_URI: mongodb+srv://${MONGODB_ATLAS_USER}:${MONGODB_ATLAS_PASSWORD}@${MONGODB_ATLAS_HOST}/notification_db?appName=${MONGODB_ATLAS_APP_NAME}
+
+  review-service:
+    <<: *app-defaults
+    build: { context: ./backend, dockerfile: Dockerfile, args: { MODULE: review-service } }
+    image: ghcr.io/aditya99k/vicinia-review-service:latest
+    depends_on:
+      config-server: { condition: service_healthy }
+    environment:
+      <<: *spring-common
+      MONGODB_URI: mongodb+srv://${MONGODB_ATLAS_USER}:${MONGODB_ATLAS_PASSWORD}@${MONGODB_ATLAS_HOST}/review_db?appName=${MONGODB_ATLAS_APP_NAME}
+
+  # ── Public ingress — Cloudflare Tunnel, no inbound port opened ──────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - api-gateway
+    mem_limit: 100m
+    networks: [vicinia]
+
+networks:
+  vicinia:
+
+volumes:
+  vicinia-postgres-data:
+  vicinia-redis-data:
+  vicinia-redpanda-data:

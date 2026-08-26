@@ -1,0 +1,10 @@
+# Keeps the Docker build context (backend/Dockerfile's COPY . .) small and
+# avoids shipping stale local build artifacts into the image build stage —
+# the multi-stage build always runs a real `mvn package` inside the
+# container, so nothing here is actually needed there.
+**/target/
+**/logs/
+**/.pids/
+.git/
+.idea/
+*.log

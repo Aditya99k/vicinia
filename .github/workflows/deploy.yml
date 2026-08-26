@@ -1,0 +1,113 @@
+name: Deploy
+
+# Stage 19 (docs/BUILD_TRACKER.md): build → push images to GHCR → SSH into
+# the Oracle VM → `docker compose pull && up -d`. Deliberately gated on
+# ci.yml's own success (workflow_run, not a plain push trigger) — a merge
+# to main that fails the test suite must never reach production.
+#
+# Inert until the four ORACLE_VM_* / CLOUDFLARE_* secrets below exist in
+# this repo's Settings > Secrets > Actions (Stage 20 — created once the VM
+# and tunnel actually exist). The build/push job runs regardless (useful on
+# its own — images land in GHCR either way); the deploy job needs the VM
+# reachable over SSH and is skipped by its own `if:` guard until then.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build + push images to GHCR
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate a build-only .env
+        # docker compose config/build reads .env for variable substitution
+        # even though none of these values end up baked into an image layer
+        # (they're consumed at container *runtime* as environment
+        # variables, not build args) — placeholders are fine here, same
+        # reasoning as ci.yml's own ephemeral .env for the e2e job.
+        run: |
+          cat > .env <<EOF
+          POSTGRES_USER=vicinia
+          POSTGRES_PASSWORD=placeholder
+          POSTGRES_DB=vicinia
+          VICINIA_INTERNAL_SECRET=placeholder
+          VICINIA_JWT_SECRET=placeholder
+          RAZORPAY_KEY_ID=
+          RAZORPAY_KEY_SECRET=
+          RAZORPAY_WEBHOOK_SECRET=
+          CLOUDINARY_CLOUD_NAME=
+          CLOUDINARY_API_KEY=
+          CLOUDINARY_API_SECRET=
+          MONGODB_ATLAS_USER=
+          MONGODB_ATLAS_PASSWORD=
+          MONGODB_ATLAS_HOST=
+          MONGODB_ATLAS_APP_NAME=
+          CLOUDFLARE_TUNNEL_TOKEN=
+          EOF
+
+      - name: Build all 16 service images
+        run: docker compose -f docker-compose.prod.yml build
+
+      - name: Push to GHCR
+        run: docker compose -f docker-compose.prod.yml push
+
+  deploy:
+    name: Deploy to Oracle VM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ vars.ORACLE_VM_HOST != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy compose file + postgres-init to the VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.ORACLE_VM_HOST }}
+          username: ${{ vars.ORACLE_VM_USER }}
+          key: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          source: docker-compose.prod.yml,backend/docker/postgres-init/**
+          target: ~/vicinia
+          strip_components: 0
+
+      - name: docker compose pull && up -d
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ vars.ORACLE_VM_HOST }}
+          username: ${{ vars.ORACLE_VM_USER }}
+          key: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          # The real .env lives only on the VM (copied there manually once,
+          # never by this pipeline) — same "secrets never travel through
+          # CI/CD, never committed" posture as every other credential in
+          # this project.
+          script: |
+            cd ~/vicinia
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
