@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vicinia — Interview Prep &amp; Concepts Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+
+  /* ============ TOKENS (same family as the other study docs) ============ */
+  :root {
+    --paper: #EDF1F6;
+    --surface: #FFFFFF;
+    --surface-2: #F5F7FB;
+    --ink: #172233;
+    --muted: #58687F;
+    --line: #C7D0DE;
+    --grid-dot: rgba(23,34,51,0.07);
+
+    --accent: #C6912E;
+    --accent-ink: #241804;
+    --accent-soft: rgba(198,145,46,0.14);
+
+    --tag-fund: #3E7CA6;
+    --tag-proj: #4B8A5E;
+    --tag-adv: #B5653A;
+    --tag-ref: #8A5FB0;
+
+    --code-bg: #101a2c;
+    --code-ink: #DCE6F5;
+    --code-muted: #7C8CA8;
+    --code-accent: #E7B45C;
+    --code-string: #9FCB8C;
+
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1526; --surface: #131F35; --surface-2: #17233C;
+      --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+      --grid-dot: rgba(231,236,246,0.055);
+      --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+      --tag-fund: #85AFDD; --tag-proj: #8FCB9F; --tag-adv: #E0A17D; --tag-ref: #C6A6EA;
+      --code-bg: #0A1220; --code-ink: #DCE6F5; --code-muted: #6E7EA0; --code-accent: #F0C572; --code-string: #A9DB98;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0C1526; --surface: #131F35; --surface-2: #17233C;
+    --ink: #E7ECF6; --muted: #93A2C0; --line: #263654;
+    --grid-dot: rgba(231,236,246,0.055);
+    --accent: #E0AC50; --accent-ink: #1C1200; --accent-soft: rgba(224,172,80,0.14);
+    --tag-fund: #85AFDD; --tag-proj: #8FCB9F; --tag-adv: #E0A17D; --tag-ref: #C6A6EA;
+    --code-bg: #0A1220; --code-ink: #DCE6F5; --code-muted: #6E7EA0; --code-accent: #F0C572; --code-string: #A9DB98;
+  }
+
+  /* ============ BASE ============ */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(var(--grid-dot) 1px, transparent 1px) 0 0/26px 26px, var(--paper);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,.mono { font-family: var(--font-mono); }
+  h1,h2,h3,h4 { text-wrap: balance; margin: 0; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  /* ============ TITLE BLOCK ============ */
+  .titleblock { max-width: 1220px; margin: 0 auto; padding: 40px 28px 22px; border-bottom: 1px solid var(--line); }
+  .titleblock .kicker { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 8px; }
+  .titleblock h1 { font-size: clamp(1.6rem, 1.15rem + 1.8vw, 2.3rem); font-weight: 700; letter-spacing: -0.01em; }
+  .titleblock .sub { font-family: var(--font-serif); color: var(--muted); font-size: 1.05rem; max-width: 74ch; margin-top: 12px; }
+
+  /* ============ LAYOUT ============ */
+  .layout { max-width: 1220px; margin: 0 auto; padding: 36px 28px 100px; display: grid; grid-template-columns: 240px 1fr; gap: 52px; align-items: start; }
+  .toc { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 2px; border-left: 2px solid var(--line); padding-left: 16px; max-height: calc(100vh - 48px); overflow-y: auto; }
+  .toc .toc-group { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+  .toc .toc-group:first-child { margin-top: 0; }
+  .toc a { font-family: var(--font-mono); font-size: 0.8rem; text-decoration: none; color: var(--muted); padding: 4px 0; border-left: 2px solid transparent; margin-left: -18px; padding-left: 16px; transition: color 0.15s ease, border-color 0.15s ease; }
+  .toc a:hover { color: var(--ink); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+
+  .article { min-width: 0; }
+  section { padding-bottom: 56px; margin-bottom: 56px; border-bottom: 1px dashed var(--line); scroll-margin-top: 24px; }
+  section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .section-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 9px; border-radius: 4px; margin-bottom: 14px; font-weight: 600; }
+  section h2 { font-size: 1.5rem; margin-bottom: 6px; }
+  section h3 { font-size: 1.1rem; margin: 30px 0 10px; color: var(--ink); }
+  section h4 { font-size: 0.95rem; margin: 20px 0 8px; color: var(--ink); }
+  section h3 .num { color: var(--muted); font-weight: 400; margin-right: 8px; }
+  .lede { color: var(--muted); font-size: 1.02rem; margin-bottom: 22px; }
+
+  .fund .section-eyebrow { background: color-mix(in srgb, var(--tag-fund) 16%, transparent); color: var(--tag-fund); }
+  .proj .section-eyebrow { background: color-mix(in srgb, var(--tag-proj) 16%, transparent); color: var(--tag-proj); }
+  .adv .section-eyebrow { background: color-mix(in srgb, var(--tag-adv) 16%, transparent); color: var(--tag-adv); }
+  .ref .section-eyebrow { background: color-mix(in srgb, var(--tag-ref) 16%, transparent); color: var(--tag-ref); }
+
+  /* ============ CODE ============ */
+  .code-wrap { overflow-x: auto; border-radius: 8px; margin: 16px 0 20px; }
+  pre.code { margin: 0; padding: 16px 18px; background: var(--code-bg); color: var(--code-ink); font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.6; white-space: pre; }
+  pre.code .c1 { color: var(--code-muted); font-style: italic; }
+  pre.code .k { color: var(--code-accent); }
+  pre.code .s { color: var(--code-string); }
+  code.inline { font-family: var(--font-mono); font-size: 0.86em; background: var(--accent-soft); padding: 1px 6px; border-radius: 3px; }
+  .code-caption { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: -8px; }
+
+  /* ============ CALLOUT ============ */
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+  .callout .label { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 700; display: block; margin-bottom: 6px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.warn { border-left-color: #B5653A; background: rgba(181,101,58,0.12); }
+  .callout.warn .label { color: #B5653A; }
+
+  /* ============ Q&A ============ */
+  .qa { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; margin: 16px 0 20px; }
+  .qa .q { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+  .qa .q::before { content: "Q — "; color: var(--accent); }
+  .qa .a { font-size: 0.95rem; color: var(--muted); margin: 0; max-width: none; }
+  .qa .a strong { color: var(--ink); }
+
+  /* ============ LISTS / TERMS ============ */
+  ul.plain { margin: 0 0 16px; padding-left: 20px; }
+  ul.plain li { margin-bottom: 8px; }
+  dl.terms { margin: 0 0 20px; }
+  dl.terms > div { display: grid; grid-template-columns: 210px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  dl.terms > div:first-child { border-top: none; }
+  dl.terms dt { font-family: var(--font-mono); font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+  dl.terms dd { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  /* ============ DIAGRAM FIGURES ============ */
+  figure.diagram { margin: 22px 0 26px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; color: var(--ink); }
+  figure.diagram svg text { fill: currentColor; }
+  figure.diagram .accent-mark { color: var(--accent); }
+  figcaption { font-family: var(--font-mono); font-size: 0.76rem; color: var(--muted); margin-top: 12px; text-align: center; }
+
+  /* ============ TABLES ============ */
+  .cheat-table { width: 100%; border-collapse: collapse; margin: 4px 0 26px; font-size: 0.88rem; }
+  .cheat-table th { text-align: left; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .cheat-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .cheat-table td:first-child { white-space: nowrap; font-family: var(--font-mono); font-size: 0.85em; }
+  .cheat-table tr:last-child td { border-bottom: none; }
+
+  /* ============ RESUME BULLET CARD ============ */
+  .bullet-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 22px; margin: 18px 0 24px; }
+  .bullet-card .bullet-text { font-family: var(--font-mono); font-size: 0.86rem; color: var(--ink); background: var(--surface-2); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; line-height: 1.55; }
+  .bullet-card h4 { margin-top: 16px; }
+  .bullet-card h4:first-of-type { margin-top: 0; }
+
+  footer.done { max-width: 1220px; margin: 0 auto; padding: 0 28px 60px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 24px; }
+    .toc { position: sticky; top: 0; z-index: 5; flex-direction: row; overflow-x: auto; white-space: nowrap; border-left: none; border-bottom: 1px solid var(--line); padding: 12px 0; background: var(--paper); gap: 4px; max-height: none; }
+    .toc .toc-group { display: none; }
+    .toc a { border-left: none; border-bottom: 2px solid transparent; margin-left: 0; padding: 6px 10px; }
+    .toc a.active { border-left: none; border-bottom-color: var(--accent); }
+    dl.terms > div { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="titleblock">
+  <span class="kicker">// study guide</span>
+  <h1>Vicinia — Interview Prep &amp; Concepts Guide</h1>
+  <p class="sub">Everything in this platform, explained from first principles up through the exact code that implements it — organized so you can either read start to finish to learn it from scratch, or jump straight to the resume deep-dive to prepare for an interview about it. No personal information here; this is pure system content.</p>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc">
+    <span class="toc-group">Fundamentals</span>
+    <a href="#microservices">Why microservices at all</a>
+    <a href="#event-driven">Event-driven &amp; Kafka</a>
+    <a href="#idempotency">Idempotency</a>
+    <a href="#saga">Sagas &amp; compensation</a>
+    <a href="#concurrency">Concurrency &amp; atomic updates</a>
+    <a href="#auth">JWT, RBAC &amp; Redis blacklisting</a>
+    <a href="#resilience">Circuit breakers, bulkheads, retry</a>
+    <a href="#redis">Redis, beyond a cache</a>
+    <a href="#observability">Observability</a>
+    <span class="toc-group">Architecture</span>
+    <a href="#service-map">The 16-service map</a>
+    <a href="#request-flow">How a request actually flows</a>
+    <a href="#order-lifecycle">The order lifecycle end to end</a>
+    <a href="#data-ownership">Data ownership: SQL vs Mongo vs Redis</a>
+    <a href="#topics">Kafka topic topology</a>
+    <span class="toc-group">Features</span>
+    <a href="#customer-journey">Customer journey</a>
+    <a href="#merchant-journey">Merchant journey</a>
+    <a href="#delivery-journey">Delivery partner journey</a>
+    <a href="#cross-cutting">Geo search, Cloudinary, deployment</a>
+    <span class="toc-group">Resume Deep-Dive</span>
+    <a href="#resume-1">Bullet 1 — architecture</a>
+    <a href="#resume-2">Bullet 2 — event pipeline + Razorpay</a>
+    <a href="#resume-3">Bullet 3 — Saga + inventory</a>
+    <a href="#resume-4">Bullet 4 — resilience + security</a>
+    <a href="#resume-5">Bullet 5 — testing + observability</a>
+    <span class="toc-group">Interview Prep</span>
+    <a href="#question-bank">Question bank</a>
+    <a href="#traps">Traps to avoid</a>
+    <span class="toc-group">Reference</span>
+    <a href="#service-table">Full service table</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
+
+  <main class="article">
+
+    <!-- ============ 1. MICROSERVICES ============ -->
+    <section id="microservices" class="fund">
+      <span class="section-eyebrow">01 · fundamentals</span>
+      <h2>Why split into microservices at all</h2>
+      <p class="lede">The alternative — one big Spring Boot app with everything in it — is simpler to build. Vicinia deliberately doesn't do that. Understanding <em>why</em> is the single most important thing to be able to explain.</p>
+
+      <p>A <strong>monolith</strong> is one deployable unit: one codebase, one build, one process, usually one database. Everything can call everything else with a plain Java method call. A <strong>microservices architecture</strong> splits that into many small, independently deployable services, each owning its own slice of the domain and — critically — its own database. Services talk to each other only over the network (HTTP or messages), never by sharing a database table or importing each other's internal classes.</p>
+
+      <p>The trade you're making: you give up the simplicity of a single process and a single transaction that spans everything, in exchange for independent deployability (ship <code>order-service</code> without touching <code>catalog-service</code>), independent scaling (scale <code>inventory-service</code> under checkout load without scaling <code>review-service</code>), and fault isolation (a bug that crashes <code>notification-service</code> doesn't take down checkout).</p>
+
+      <div class="callout">
+        <span class="label">The honest cost, worth saying out loud in an interview</span>
+        <p>Microservices don't remove complexity — they move it. A single-process monolith gets ACID transactions for free; a microservices system has to solve "how do I keep data consistent across services" itself, by hand, which is exactly why this project needed the Saga pattern (§4) and idempotent consumers (§3) at all. If you're asked "why not just a monolith," the honest answer is: at Vicinia's actual scale, a monolith would have been simpler — this project chose microservices deliberately, as a learning and portfolio exercise in the patterns a real system at scale needs, not because the traffic demanded it.</p>
+      </div>
+
+      <h3><span class="num">1.1</span>Vicinia's own split</h3>
+      <p>16 independently deployable services (plus a shared <code>common</code> library, not itself deployed): 3 platform services (service discovery, config, gateway) and 13 domain services, each owning one noun in the system — <code>auth</code>, <code>user</code>, <code>merchant</code>, <code>catalog</code>, <code>inventory</code>, <code>cart</code>, <code>coupon</code>, <code>payment</code>, <code>order</code>, <code>delivery</code>, <code>notification</code>, <code>review</code>, <code>settlement</code>. See §10 for the full table.</p>
+    </section>
+
+    <!-- ============ 2. EVENT DRIVEN ============ -->
+    <section id="event-driven" class="fund">
+      <span class="section-eyebrow">02 · fundamentals</span>
+      <h2>Event-driven architecture &amp; Kafka, from scratch</h2>
+      <p class="lede">The problem: when a customer places an order, at least five services need to know something happened — cart needs to clear, merchant needs a task created, inventory already reserved, payment needs to resolve, settlement eventually needs to pay the merchant. How do those five services find out, without <code>order-service</code> calling all five synchronously and becoming a single point of failure for every one of them?</p>
+
+      <p>Two ways to tell another service something happened: <strong>synchronous</strong> (a direct REST call — "call me now, wait for my answer") or <strong>asynchronous</strong> (publish a message to a broker, anyone interested subscribes and reacts whenever they're ready). Vicinia uses REST for <em>request-response</em> needs (order-service asking inventory-service "do you have stock, right now, yes or no") and Kafka for <em>fan-out notification</em> needs (order-service announcing "this order is confirmed," with no idea or care who's listening).</p>
+
+      <h3><span class="num">2.1</span>Kafka concepts, in order</h3>
+      <dl class="terms">
+        <div><dt>Broker</dt><dd>The server that stores and routes messages. Vicinia runs <strong>Redpanda</strong> instead of real Apache Kafka — same wire protocol, same client library, no code difference, but a single binary with no separate Zookeeper process and a far smaller memory footprint (a deliberate choice for fitting on a free-tier VM — see §18).</dd></div>
+        <div><dt>Topic</dt><dd>A named stream of messages, e.g. <code>order-events</code>. Producers publish to a topic; consumers subscribe to one.</dd></div>
+        <div><dt>Partition</dt><dd>A topic is split into ordered partitions for parallelism. Vicinia publishes keyed by <code>orderId</code>, so every event for the same order lands on the same partition — guaranteeing they're processed in the order they were published, without needing every service to coordinate on ordering.</dd></div>
+        <div><dt>Consumer group</dt><dd>A named set of consumer instances sharing the work of one topic. Two services both reading <code>order-events</code> are two <em>separate</em> consumer groups (each sees every message); two instances of the <em>same</em> service reading the same topic are the <em>same</em> group (they split the partitions between them).</dd></div>
+        <div><dt>Offset</dt><dd>A per-partition, per-group bookmark: "I've processed up to message #N." This is what lets a crashed consumer resume where it left off instead of reprocessing everything or skipping ahead.</dd></div>
+      </dl>
+
+      <div class="callout warn">
+        <span class="label">A real bug this exact model caused, and its fix</span>
+        <p>Two <code>@KafkaListener</code> methods in the <em>same service</em> both reading the same topic with the <em>same</em> <code>groupId</code> split that topic's partitions between them — for a single-partition topic, only <strong>one</strong> of the two ever gets messages, the other sits permanently idle, silently. This was caught twice in this project: once as a JSON-deserialization mismatch (Spring Kafka's <code>spring.json.value.default.type</code> is a per-service global setting, not per-listener — reusing a class name across two intended-different event shapes broke deserialization), and once caught <em>before</em> it shipped, when a new "cancelled" handler was about to be added as a second <code>@KafkaListener</code> on a topic a first one already consumed. The fix both times: <strong>one listener per (topic, service) pair</strong>, branching internally on an <code>eventType</code> field via a switch statement, never two listeners on the same topic in the same service.</p>
+      </div>
+
+      <h3><span class="num">2.2</span>The envelope shape</h3>
+      <p>Every event on every topic uses the same wrapper, so any consumer can deserialize the envelope first and only then decide (via <code>eventType</code>) what payload shape to expect inside it:</p>
+      <div class="code-wrap"><pre class="code"><span class="c1">// EventEnvelope — every message on every topic looks like this</span>
+{
+  <span class="s">"eventId"</span>: <span class="s">"uuid"</span>,        <span class="c1">// unique per publish, useful for tracing/dedup</span>
+  <span class="s">"eventType"</span>: <span class="s">"order.confirmed"</span>,
+  <span class="s">"schemaVersion"</span>: 1,
+  <span class="s">"occurredAt"</span>: <span class="s">"2026-08-27T10:00:00Z"</span>,
+  <span class="s">"payload"</span>: { <span class="c1">"...whatever this event type carries..."</span> }
+}</pre></div>
+      <p>One topic per <em>aggregate</em> (<code>order-events</code>, <code>payment-events</code>, <code>delivery-events</code>, <code>merchant-events</code>, <code>inventory-events</code>, <code>product-events</code>) rather than one topic per event type — see §14 for the full topic map and who publishes/consumes each.</p>
+    </section>
+
+    <!-- ============ 3. IDEMPOTENCY ============ -->
+    <section id="idempotency" class="fund">
+      <span class="section-eyebrow">03 · fundamentals</span>
+      <h2>Idempotency</h2>
+      <p class="lede">An operation is <strong>idempotent</strong> if doing it twice has the same effect as doing it once. This matters enormously in an async, at-least-once-delivery system: Kafka (and most message brokers) can redeliver a message — after a consumer crash mid-processing, after a rebalance, after a retry — so every consumer has to assume "this exact message might arrive more than once" and behave correctly anyway.</p>
+
+      <h3><span class="num">3.1</span>Three real idempotency techniques used in this codebase</h3>
+      <dl class="terms">
+        <div><dt>Existence check</dt><dd><code>merchant-service</code>'s order-confirmed handler checks <code>taskRepository.findByOrderId(orderId).isPresent()</code> before creating a task — a redelivered <code>order.confirmed</code> event is a safe no-op, not a duplicate task.</dd></div>
+        <div><dt>State-guarded transition</dt><dd><code>completeFromDelivery</code> and <code>cancelFromOrderEvent</code> both only act "while the task is still READY" — a redelivered event that arrives after the state already moved on does nothing, rather than throwing or double-applying.</dd></div>
+        <div><dt>Atomic conditional update</dt><dd>The strongest guarantee, covered fully in §5 — a single SQL <code>UPDATE ... WHERE status = 'expected'</code> that the database itself either applies exactly once or rejects, no matter how many times or how concurrently it's attempted.</dd></div>
+      </dl>
+
+      <div class="qa">
+        <p class="q">Why does at-least-once delivery exist at all — why not just guarantee exactly-once?</p>
+        <p class="a">Because guaranteeing a message is delivered <strong>and processed</strong> exactly once, end to end, across a network that can fail at any point, is provably impossible to do for free (it's a variant of the Two Generals problem). Real systems pick <strong>at-least-once</strong> delivery (never lose a message, occasionally redeliver one) and push the responsibility for handling duplicates onto the consumer — which is exactly why idempotent consumers are a load-bearing design requirement, not an optional nicety.</p>
+      </div>
+    </section>
+
+    <!-- ============ 4. SAGA ============ -->
+    <section id="saga" class="fund">
+      <span class="section-eyebrow">04 · fundamentals</span>
+      <h2>The Saga pattern &amp; compensating transactions</h2>
+      <p class="lede">A single checkout touches inventory, payment, and (eventually) delivery and settlement — four separate databases, owned by four separate services. A classic ACID transaction can't span them. A Saga is the answer: a sequence of local transactions, each in one service, where every step that changes state has a matching <strong>compensating action</strong> that undoes it if a later step fails.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 680 220" role="img" aria-label="Diagram of the checkout saga: reserve inventory, then attempt payment; on payment failure, the compensating action releases the inventory reservation instead of leaving it held.">
+          <defs>
+            <marker id="arrA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="20" y="30" width="150" height="46" fill="none" stroke="currentColor"/>
+          <text x="95" y="58" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">reserve inventory</text>
+          <line x1="170" y1="53" x2="260" y2="53" stroke="currentColor" marker-end="url(#arrA)"/>
+          <rect x="260" y="30" width="150" height="46" fill="none" stroke="currentColor" class="accent-mark" stroke-width="2"/>
+          <text x="335" y="58" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" class="accent-mark">attempt payment</text>
+          <line x1="335" y1="76" x2="335" y2="120" stroke="currentColor" marker-end="url(#arrA)"/>
+          <text x="345" y="102" font-family="IBM Plex Mono" font-size="10">fails</text>
+          <rect x="245" y="122" width="180" height="46" fill="none" stroke="currentColor" stroke-dasharray="4 3"/>
+          <text x="335" y="150" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">compensate: release inventory</text>
+          <line x1="245" y1="145" x2="170" y2="76" stroke="currentColor" stroke-dasharray="2 3" marker-end="url(#arrA)"/>
+          <line x1="410" y1="53" x2="500" y2="53" stroke="currentColor" marker-end="url(#arrA)"/>
+          <text x="430" y="42" font-family="IBM Plex Mono" font-size="10">succeeds</text>
+          <rect x="500" y="30" width="150" height="46" fill="none" stroke="currentColor"/>
+          <text x="575" y="58" text-anchor="middle" font-family="IBM Plex Mono" font-size="11">confirm order</text>
+        </svg>
+        <figcaption>The forward path and its compensating (undo) path — the same shape repeats for every one of the 7 real triggers in §16.</figcaption>
+      </figure>
+
+      <h3><span class="num">4.1</span>Choreography vs. orchestration</h3>
+      <p>There are two ways to coordinate a Saga: <strong>orchestration</strong> (one central coordinator service explicitly tells every other service what to do, in order) and <strong>choreography</strong> (no coordinator — every service reacts to events and publishes its own, and the overall flow emerges from those reactions). Vicinia is choreographed: <code>order-service</code> never tells <code>merchant-service</code> "now create a task" — it publishes <code>order.confirmed</code>, and <code>merchant-service</code>'s own consumer decides to react to it. The trade-off: choreography has no single place to read "the whole flow," but no single point of failure either.</p>
+
+      <h3><span class="num">4.2</span>The 7 real compensation triggers in this codebase</h3>
+      <p>Every one of these releases the inventory reservation and/or publishes <code>order.cancelled</code> (which triggers an event-driven refund in <code>payment-service</code>), tagged by a Prometheus counter (<code>order.compensation</code>, tag <code>trigger</code>) so a Grafana panel can show exactly which failure mode is happening in production, not just a raw "cancelled" total:</p>
+      <table class="cheat-table">
+        <tr><th>Trigger</th><th>What happened</th></tr>
+        <tr><td>coupon_rejected</td><td>Coupon service rejected the code at checkout (expired, usage limit hit)</td></tr>
+        <tr><td>insufficient_stock</td><td>Inventory reservation failed — someone else got there first</td></tr>
+        <tr><td>wallet_payment_failed</td><td>Synchronous wallet debit came back insufficient/failed</td></tr>
+        <tr><td>razorpay_payment_failed</td><td>Async webhook reported <code>payment.failed</code></td></tr>
+        <tr><td>merchant_rejected</td><td>Merchant declined the order after payment succeeded</td></tr>
+        <tr><td>customer_cancelled</td><td>Customer cancelled pre-delivery</td></tr>
+        <tr><td>merchant_cancelled_ready</td><td>Merchant's own escape hatch — no rider ever collected a ready order</td></tr>
+      </table>
+    </section>
+
+    <!-- ============ 5. CONCURRENCY ============ -->
+    <section id="concurrency" class="fund">
+      <span class="section-eyebrow">05 · fundamentals</span>
+      <h2>Concurrency, race conditions &amp; the atomic conditional update</h2>
+      <p class="lede">The single highest-leverage pattern to be able to explain fluently — it appears 5 separate times in this codebase, solving what looks like 5 different problems but is actually the same problem every time.</p>
+
+      <h3><span class="num">5.1</span>The race, concretely</h3>
+      <p>Two customers both try to buy the last unit of a product at the same instant. The naive approach — <code>read</code> the current stock, check <code>if stock &gt; 0</code> in application code, then <code>write</code> the decremented value — has a window between the read and the write where both requests can read "stock = 1," both decide it's available, and both write "stock = 0." Result: oversold, two customers charged for one unit.</p>
+
+      <div class="callout">
+        <span class="label">The fix: let the database do the check-and-set atomically</span>
+        <p>Instead of "read, decide in Java, write," issue one SQL statement that does the check <em>and</em> the write as a single atomic operation the database itself guarantees can't be interleaved: <code>UPDATE listings SET available_stock = available_stock - 1 WHERE id = ? AND available_stock &gt;= 1</code>. If two requests race, the database's own row-level locking serializes them — exactly one <code>UPDATE</code> actually changes a row (returns "1 row affected"), the other's <code>WHERE</code> clause no longer matches (returns "0 rows affected"). The application code just checks the affected-row count to know which one it was — no explicit lock, no <code>synchronized</code> block, no distributed lock service needed.</p>
+      </div>
+
+      <h3><span class="num">5.2</span>The same shape, 5 places</h3>
+      <dl class="terms">
+        <div><dt>Inventory reservation</dt><dd><code>inventory-service</code> — the canonical example above. <strong>Verified under real load</strong>: 20 parallel reservation requests against a listing with stock=1, exactly one <code>201</code>, nineteen <code>409</code>s, final state <code>availableStock=0</code>, exactly one reservation row.</dd></div>
+        <div><dt>Coupon usage limit</dt><dd><code>coupon-service</code> — <code>UPDATE coupons SET usage_count = usage_count + 1 WHERE id = ? AND usage_count &lt; usage_limit</code>. Verified two ways: 20 parallel applies with distinct orderIds against <code>usageLimit=1</code> → exactly one succeeds; separately, 15 parallel applies with the <em>same</em> orderId (a genuine double-submit) → all 15 return success but <code>usage_count</code> only nets +1 — idempotency under real concurrency, not just sequential retries.</dd></div>
+        <div><dt>Wallet balance</dt><dd><code>payment-service</code> — pay and refund both conditionally update balance, never a blind read-then-write.</dd></div>
+        <div><dt>Razorpay webhook resolution</dt><dd>A webhook can be delivered more than once (Razorpay's own retry policy) — <code>tryResolve</code> conditionally transitions a payment from <code>PAYMENT_PENDING</code>, so a replayed webhook is a verified no-op, confirmed by replaying an identical delivery and checking the topic's offset didn't advance a second time.</dd></div>
+        <div><dt>Order status transitions</dt><dd>Every status change goes through <code>OrderStatusTransition.assertAllowed(from, to)</code> — not concurrency-atomic in the same SQL sense, but the same underlying principle: never trust that the in-memory object still reflects reality, always assert the precondition explicitly before acting.</dd></div>
+      </dl>
+
+      <div class="qa">
+        <p class="q">Why not just use a distributed lock (e.g. a Redis lock) instead?</p>
+        <p class="a">A lock adds a whole new failure mode: what happens if the process holding the lock crashes before releasing it? Now you need lock timeouts, fencing tokens, and a plan for "the lock expired but the original holder is still running." A conditional <code>UPDATE</code> has none of that — the database's own transaction guarantee <strong>is</strong> the lock, scoped automatically to exactly the row in question, released automatically the instant the statement completes. Simpler, and there's no separate system (Redis) that becomes a new single point of failure for correctness.</p>
+      </div>
+    </section>
+
+    <!-- ============ 6. AUTH ============ -->
+    <section id="auth" class="fund">
+      <span class="section-eyebrow">06 · fundamentals</span>
+      <h2>JWT authentication, RBAC &amp; Redis-backed blacklisting</h2>
+
+      <h3><span class="num">6.1</span>Why "stateless" auth, and what that word actually means</h3>
+      <p>A traditional session-based login stores session state <em>server-side</em> (in memory or a shared store), and the browser just holds an opaque session ID cookie that points at it — every request needs a lookup. A <strong>JWT</strong> (JSON Web Token) instead packs the actual claims (user ID, roles, permissions, expiry) into the token itself, cryptographically signed so a server can verify it wasn't tampered with <em>without looking anything up</em> — the token <em>is</em> the credential. "Stateless" means any service holding the shared signing secret can validate any token, independently, with zero shared server-side session state.</p>
+
+      <div class="code-wrap"><pre class="code"><span class="c1">// what's actually inside a Vicinia access token, decoded</span>
+{
+  <span class="s">"jti"</span>: <span class="s">"uuid"</span>,           <span class="c1">// unique token ID — the key the blacklist uses</span>
+  <span class="s">"sub"</span>: <span class="s">"user-uuid"</span>,
+  <span class="s">"email"</span>: <span class="s">"..."</span>,
+  <span class="s">"roles"</span>: [<span class="s">"CUSTOMER"</span>],
+  <span class="s">"permissions"</span>: [<span class="s">"ORDER_PLACE"</span>, <span class="s">"ORDER_VIEW_OWN"</span>],
+  <span class="s">"iat"</span>: 1787743893, <span class="s">"exp"</span>: 1787744793  <span class="c1">// 15 min lifetime</span>
+}</pre></div>
+
+      <h3><span class="num">6.2</span>RBAC: roles vs. permissions</h3>
+      <p>A <strong>role</strong> (<code>CUSTOMER</code>, <code>MERCHANT</code>, <code>DELIVERY_PARTNER</code>, <code>ADMIN</code>) is a coarse label a user has. A <strong>permission</strong> (<code>ORDER_PLACE</code>, <code>CATALOG_MANAGE</code>, <code>STORE_MANAGE</code>, <code>DELIVERY_MANAGE</code>, ...) is a fine-grained capability a role grants. Every protected endpoint checks a <em>permission</em>, never a role directly — the indirection means adding a new role, or changing what an existing role can do, is a data change (which permissions map to which role), not a code change in every controller that happens to care.</p>
+
+      <h3><span class="num">6.3</span>How the gateway enforces this for every downstream service, for free</h3>
+      <p>The API Gateway validates the JWT <strong>once</strong, at the edge, then strips any client-supplied copy of the trust headers and stamps its own: <code>X-User-Id</code>, <code>X-User-Email</code>, <code>X-User-Roles</code>, <code>X-User-Permissions</code>. Every downstream service just reads those headers — it never parses a JWT itself, and it never needs to, because it structurally can't be reached except through the gateway (an <code>InternalRequestFilter</code> on every service checks a shared internal secret the gateway alone stamps on every proxied request, rejecting anything that bypasses it).</p>
+
+      <h3><span class="num">6.4</span>Redis-backed logout blacklisting</h3>
+      <p>A JWT's whole value proposition is that no server-side lookup is needed to validate it — which creates an obvious problem: how do you invalidate one before it naturally expires (a logout, a stolen token)? The answer isn't to stop being stateless everywhere; it's one small, targeted stateful check, right at the edge:</p>
+
+      <div class="code-wrap"><pre class="code"><span class="c1">// TokenBlacklistService — auth-service</span>
+<span class="k">public void</span> blacklist(String jti, Instant expiresAt) {
+    <span class="c1">// TTL capped to the token's own remaining lifetime — the</span>
+    <span class="c1">// blacklist entry expires from Redis at the exact moment the</span>
+    <span class="c1">// token itself would have expired anyway, never outliving it</span>
+    <span class="k">long</span> ttlSeconds = Math.max(1, Duration.between(Instant.now(), expiresAt).getSeconds());
+    redis.opsForValue().set(<span class="s">"blacklist:"</span> + jti, <span class="s">"1"</span>, Duration.ofSeconds(ttlSeconds));
+}</pre></div>
+      <p>The gateway checks <code>Redis.hasKey("blacklist:" + jti)</code> on every authenticated request, before trusting the token further. This is the one place the system trades pure statelessness for a real security guarantee — and it's deliberately the smallest possible stateful surface: one Redis key lookup, not a full session store.</p>
+
+      <div class="qa">
+        <p class="q">If checking Redis on every request adds a lookup, haven't you just reinvented sessions?</p>
+        <p class="a">Not quite — the difference is what's being looked up. A session store holds the <em>entire</em> auth state (who is this, what can they do) and every request needs it. This blacklist check answers exactly one boolean question ("has this specific token been explicitly revoked?") and everything else — identity, roles, permissions — still comes from the token itself, verified by signature alone, with zero lookup. The stateful part is a targeted exception, not the whole mechanism.</p>
+      </div>
+
+      <h3><span class="num">6.5</span>BCrypt</h3>
+      <p>Passwords are never stored in plaintext or with a fast general-purpose hash (MD5, SHA-256) — those are <em>designed</em> to be fast, which is exactly the wrong property for a password hash (fast means an attacker with a stolen hash database can brute-force billions of guesses per second). <strong>BCrypt</strong> is deliberately slow and has a tunable work factor, and it automatically salts each hash (two users with the same password get different stored hashes), defeating rainbow-table attacks. One Spring Security bean (<code>BCryptPasswordEncoder</code>) covers both signup and password reset.</p>
+    </section>
+
+    <!-- ============ 7. RESILIENCE ============ -->
+    <section id="resilience" class="fund">
+      <span class="section-eyebrow">07 · fundamentals</span>
+      <h2>Circuit breakers, bulkheads &amp; retry — and why they're different tools</h2>
+      <p class="lede">All three answer "a downstream call is failing or slow — what do I do about it," but at different points in the failure's lifecycle, and Vicinia deliberately uses two different libraries for them, not one.</p>
+
+      <dl class="terms">
+        <div><dt>Retry</dt><dd>A single call failed — try again, on the assumption the failure was transient (a network blip, a momentary timeout). Vicinia uses <strong>Spring Retry</strong> (<code>@Retryable</code>) for this, on <code>InventoryClient</code> and <code>PaymentClient</code>'s outbound calls.</dd></div>
+        <div><dt>Circuit breaker</dt><dd>Retrying a call to a service that's <em>genuinely down</em>, not just transiently blipping, wastes time and keeps piling load onto something already struggling. A circuit breaker tracks the failure rate over a rolling window and "opens" (stops even attempting the call, fails fast instead) once failures cross a threshold — then periodically lets a few calls through ("half-open") to check if the downstream has recovered.</dd></div>
+        <div><dt>Bulkhead</dt><dd>Named after a ship's watertight compartments — limits how many <em>concurrent</em> calls to one specific downstream can be in flight at once, so a slow/hanging third-party doesn't exhaust the entire request-handling thread pool and take down calls to <em>every other, unrelated</em> service too.</dd></div>
+      </dl>
+
+      <h3><span class="num">7.1</span>Where this is actually configured — and where it deliberately isn't</h3>
+      <p><strong>Resilience4j</strong> (circuit breaker + bulkhead) is configured in exactly one place: <code>order-service</code>'s call out to <code>payment-service</code> for the Razorpay path specifically — not every inter-service call in the system.</p>
+      <div class="code-wrap"><pre class="code"><span class="c1"># order-service/application.yml</span>
+resilience4j:
+  circuitbreaker:
+    instances:
+      razorpay:                        <span class="c1"># named instance — scoped, not global</span>
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50     <span class="c1"># % failures to trip open</span>
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+  bulkhead:
+    instances:
+      razorpay:
+        max-concurrent-calls: 10
+        max-wait-duration: 0           <span class="c1"># fail fast once full, don't queue</span></pre></div>
+
+      <div class="callout warn">
+        <span class="label">A precise claim worth getting right</span>
+        <p>It would be easy to say "we used Resilience4j for retries and circuit breaking across the system" — that overstates it. Resilience4j here is <em>specifically</em> the third-party payment gateway's circuit breaker and bulkhead; retries elsewhere in the codebase are Spring Retry, a different library. Being able to draw this exact line — which library, which one call path, why scoped that narrowly — reads as far stronger in an interview than a vague "we added resilience patterns" claim, because it shows you understand <em>why</em> a third-party payment gateway specifically deserves this treatment and an internal, already-reliable service call doesn't need the same ceremony.</p>
+      </div>
+
+      <div class="qa">
+        <p class="q">Why does only the payment gateway get a circuit breaker, and not, say, the call to inventory-service?</p>
+        <p class="a"><code>inventory-service</code> is <em>our own</em> service, on the same network, with its own retry and well-understood failure modes — a slow inventory call is diagnosable and fixable directly. Razorpay is a <em>third-party</em> we have zero control over; if it degrades, the only thing we can control is how gracefully <em>our</em> system degrades in response — failing fast (circuit open) and not letting a hanging payment call monopolize threads (bulkhead) that other, unrelated requests need. Resilience engineering effort goes where the actual risk and the actual lack of control are highest, not applied uniformly everywhere for its own sake.</p>
+      </div>
+    </section>
+
+    <!-- ============ 8. REDIS ============ -->
+    <section id="redis" class="fund">
+      <span class="section-eyebrow">08 · fundamentals</span>
+      <h2>Redis, beyond "a cache"</h2>
+      <p class="lede">Redis is an in-memory key-value store — fast because it's RAM, not disk, and single-threaded-per-shard so operations are naturally free of the exact race conditions §5 worries about at the database layer. Vicinia uses it for four genuinely different jobs, which is itself worth being able to enumerate:</p>
+      <dl class="terms">
+        <div><dt>Cart storage</dt><dd><code>cart-service</code> — a cart is inherently ephemeral, session-like data; a 7-day TTL on the key means an abandoned cart just evaporates, no cleanup job needed.</dd></div>
+        <div><dt>JWT blacklist</dt><dd>§6.4 — one key per revoked token, TTL-bound to the token's own expiry.</dd></div>
+        <div><dt>Rate limiting</dt><dd>Spring Cloud Gateway's built-in <code>RequestRateLimiter</code>, backed by <code>RedisRateLimiter</code> — a genuine token-bucket algorithm implemented as a Lua script executed atomically inside Redis, keyed per-user (by the same trusted <code>X-User-Id</code> header the gateway itself stamps) or per-IP for unauthenticated routes.</dd></div>
+        <div><dt>Delivery partner GEO search</dt><dd><code>delivery-service</code> uses Redis's native <code>GEOADD</code>/<code>GEOSEARCH</code> commands to find online riders within a radius of a pickup point — a purpose-built geospatial index, not something bolted on top of a plain key-value store.</dd></div>
+      </dl>
+      <div class="callout">
+        <span class="label">Note — a related but separate geo-search</span>
+        <p>Don't confuse the Redis GEO search above (finding a <em>rider</em> near a pickup point) with merchant discovery (finding a <em>store</em> near a customer) — that one is plain Haversine distance computed in application code against Postgres-stored coordinates, covered in §18. Two different problems that happen to both be "find something nearby," solved with two different tools for good reasons — worth being able to explain why they're not the same code path if asked.</p>
+      </div>
+    </section>
+
+    <!-- ============ 9. OBSERVABILITY ============ -->
+    <section id="observability" class="fund">
+      <span class="section-eyebrow">09 · fundamentals</span>
+      <h2>Observability: metrics, dashboards, and knowing something broke before a user tells you</h2>
+      <p class="lede"><strong>Micrometer</strong> is a vendor-neutral metrics facade built into Spring Boot Actuator; point it at Prometheus (one dependency, near-zero config) and every service exposes a <code>/actuator/prometheus</code> endpoint in Prometheus's plain-text exposition format. <strong>Prometheus</strong> itself is a time-series database that <em>pulls</em> (scrapes) those endpoints on an interval and stores the history. <strong>Grafana</strong> queries Prometheus and renders it as dashboards.</p>
+
+      <h3><span class="num">9.1</span>Two kinds of metrics, and why both matter</h3>
+      <dl class="terms">
+        <div><dt>Infrastructure metrics</dt><dd>Request latency, JVM memory, Kafka consumer lag, dead-letter-topic volume — "is the system healthy as a piece of software." Mostly free from Spring Boot Actuator's auto-configuration.</dd></div>
+        <div><dt>Business metrics</dt><dd>Custom counters/gauges Vicinia added deliberately: <code>order.funnel</code> (created → payment success → merchant acceptance → delivered, tagged by stage), <code>order.compensation</code> (tagged by trigger — §4.2), <code>order.stale.ready_for_pickup</code> (a gauge — how many orders have sat waiting too long for a rider), <code>inventory.oversell</code> (a canary counter that should <em>always</em> read zero — if it's ever nonzero, the atomic-update guarantee in §5 failed), <code>payment.outcome</code> (tagged by method and outcome).</dd></div>
+      </dl>
+      <p>6 Grafana dashboards, one roughly per metric family above, plus a Kafka consumer-lag dashboard. The business metrics are the more interesting story in an interview: they're not something Actuator gives you for free, they're a deliberate choice about what's worth watching in <em>this specific domain</em> — a canary metric that should always be zero is a particularly strong thing to be able to explain, because it demonstrates thinking about how you'd <em>notice</em> your own concurrency guarantee silently breaking in production, not just that you built the guarantee once.</p>
+    </section>
+
+    <!-- ============ 10. SERVICE MAP ============ -->
+    <section id="service-map" class="proj">
+      <span class="section-eyebrow">10 · architecture</span>
+      <h2>The 16-service map</h2>
+      <p class="lede">Full table with ports and datastores lives in §22 for reference. The shape worth remembering: 3 platform services, 9 Postgres-backed domain services, 3 MongoDB-backed domain services, 1 Redis-primary domain service.</p>
+      <table class="cheat-table">
+        <tr><th>Layer</th><th>Services</th><th>Job</th></tr>
+        <tr><td>Platform</td><td>discovery-server, config-server, api-gateway</td><td>Service registry (Eureka), shared config, single public entry point + auth enforcement</td></tr>
+        <tr><td>Postgres domain</td><td>auth, user, merchant, inventory, coupon, order, payment, delivery, settlement</td><td>Relational, transactional data — one logical database per service</td></tr>
+        <tr><td>MongoDB domain</td><td>catalog, review, notification</td><td>Document-shaped or high-write-volume, low-relational data</td></tr>
+        <tr><td>Redis-primary</td><td>cart</td><td>Ephemeral, TTL-based state</td></tr>
+      </table>
+      <div class="qa">
+        <p class="q">Why does each service get its own database instead of sharing one?</p>
+        <p class="a">Database-per-service is what actually <em>makes</em> it a microservice, not just a separately-deployed process. If two services shared a database, they'd be coupled at the schema level — one service's migration could break the other, and you'd lose the ability to reason about a service's data invariants in isolation. Sharing infrastructure (all 9 Postgres-backed services running on <em>one</em> physical Postgres instance, per §18's cost-conscious deployment) is fine and doesn't violate this — what matters is that each service owns its own <em>logical</em> database and nothing else ever touches its tables directly.</p>
+      </div>
+    </section>
+
+    <!-- ============ 11. REQUEST FLOW ============ -->
+    <section id="request-flow" class="proj">
+      <span class="section-eyebrow">11 · architecture</span>
+      <h2>How a request actually flows</h2>
+      <ol class="plain" style="padding-left:20px;">
+        <li>Browser sends a request to <strong>api-gateway</strong> (the only service with a public port) with a <code>Bearer</code> JWT.</li>
+        <li>Gateway's <code>AuthGlobalFilter</code> validates the signature and expiry, checks the Redis blacklist (§6.4), and — for CORS preflight (<code>OPTIONS</code>) requests — short-circuits before any of that, answered directly by Spring's CORS filter.</li>
+        <li>Gateway strips any client-supplied <code>X-User-*</code> headers (never trust what the client sent) and stamps its own, verified ones.</li>
+        <li>Gateway looks up which service owns this path via <strong>Eureka</strong> (service discovery — every service registers itself on boot, deregisters on shutdown) and load-balances the request there.</li>
+        <li>The downstream service's own <code>InternalRequestFilter</code> checks a shared internal secret the gateway always stamps — a direct request to a service's own port, bypassing the gateway, is rejected with 403 even with a perfectly valid JWT, since that header is missing.</li>
+        <li>The service handles the request, possibly calling other services synchronously (REST, for request-response needs) and/or publishing events to Kafka (for fan-out needs), then responds.</li>
+      </ol>
+      <div class="callout warn">
+        <span class="label">A real timing bug this flow caused</span>
+        <p>Spring Cloud Gateway's load-balancer keeps its <em>own</em> client-side cache of "which instances exist for this service," refreshed on its own schedule — separate from Eureka's own registry, which can already be correct while the gateway's cache hasn't caught up yet. Right after a fresh service starts, a request routed through the gateway can get a <code>503</code> even though the target service is healthy and Eureka-registered — seen live in this project's own CI. The fix wasn't to route around the gateway; it was to make the caller tolerant of a brief, bounded warm-up window (retry specifically on 503, a few times, with a short backoff) — the same "don't treat a startup race as a permanent failure" reasoning used elsewhere in the project.</p>
+      </div>
+    </section>
+
+    <!-- ============ 12. ORDER LIFECYCLE ============ -->
+    <section id="order-lifecycle" class="proj">
+      <span class="section-eyebrow">12 · architecture</span>
+      <h2>The order lifecycle, end to end — the flagship whiteboard story</h2>
+      <p class="lede">If an interviewer asks you to draw one thing, draw this. It touches nearly every pattern in this guide in one continuous story.</p>
+      <table class="cheat-table">
+        <tr><th>Status</th><th>What causes the transition</th></tr>
+        <tr><td>CREATED</td><td>Customer checks out — order-service snapshots the cart's line items</td></tr>
+        <tr><td>PAYMENT_PENDING</td><td>Inventory reservation succeeds (§5); wallet resolves synchronously in the same request, Razorpay resolves later via a signed webhook</td></tr>
+        <tr><td>CONFIRMED</td><td>Payment succeeds — inventory reservation is confirmed (converted from held to committed), <code>order.confirmed</code> published</td></tr>
+        <tr><td>MERCHANT_ACCEPTED → PREPARING</td><td>Merchant accepts the task <code>order.confirmed</code> created for them (§4's choreography — order-service never told merchant-service directly)</td></tr>
+        <tr><td>READY_FOR_PICKUP</td><td>Merchant marks ready — delivery-service's own consumer reacts to the same event to search for a nearby, online rider via Redis GEO (§8)</td></tr>
+        <tr><td>DELIVERY_ASSIGNED</td><td>A rider is found and assigned</td></tr>
+        <tr><td>OUT_FOR_DELIVERY</td><td>Rider marks picked up — <code>delivery.picked_up</code> published (a real gap found and fixed this project: this event didn't originally exist, so a rider's actual pickup activity never updated the order's own status at all)</td></tr>
+        <tr><td>DELIVERED</td><td>Rider marks delivered — triggers settlement-service to create a payout entry for the merchant</td></tr>
+        <tr><td>CANCELLED (from any pre-delivery state)</td><td>Any of the 7 triggers in §4.2 — release inventory, event-driven refund</td></tr>
+      </table>
+      <p>Every arrow in this table is a Kafka event crossing a service boundary, or a direct REST call for something needing an immediate answer (inventory reservation, wallet debit) — being able to say, for each transition, "was this REST or Kafka, and why" is exactly the kind of question this story invites.</p>
+    </section>
+
+    <!-- ============ 13. DATA OWNERSHIP ============ -->
+    <section id="data-ownership" class="proj">
+      <span class="section-eyebrow">13 · architecture</span>
+      <h2>Data ownership: why Postgres <em>and</em> MongoDB <em>and</em> Redis</h2>
+      <p class="lede">Polyglot persistence — choosing the datastore per service based on that service's own access pattern, not standardizing on one database for the whole system.</p>
+      <dl class="terms">
+        <div><dt>Postgres — 9 services</dt><dd>Strongly relational, transactional data with real invariants to enforce (an order's line items, a coupon's usage count, a wallet balance) — exactly where ACID guarantees and the conditional-update pattern (§5) matter most.</dd></div>
+        <div><dt>MongoDB — catalog, review, notification</dt><dd>Catalog's product documents vary in shape by category and don't need relational joins; notifications and reviews are high write-volume, read-by-recipient/product data with no cross-entity transactional requirement.</dd></div>
+        <div><dt>Redis — cart, plus cross-cutting concerns</dt><dd>Ephemeral or genuinely different-shaped data (§8) that doesn't belong in a relational schema at all.</dd></div>
+      </dl>
+      <p>One deliberate, documented deviation worth mentioning if asked: in production, Postgres is <strong>self-hosted</strong> (one instance, 9 logical databases) rather than using a managed free-tier database service — because managed free tiers typically autosuspend on inactivity, and a multi-second cold start on the first request after idle is a real latency problem when a single checkout makes synchronous calls to 3+ services in sequence. MongoDB stays on a managed free tier (Atlas) instead, because only 3 services need it and a managed tier has no downside there.</p>
+    </section>
+
+    <!-- ============ 14. TOPICS ============ -->
+    <section id="topics" class="proj">
+      <span class="section-eyebrow">14 · architecture</span>
+      <h2>Kafka topic topology</h2>
+      <table class="cheat-table">
+        <tr><th>Topic</th><th>Publisher</th><th>Consumers</th></tr>
+        <tr><td>order-events</td><td>order-service</td><td>cart-service (clear on confirm), merchant-service (create/cancel task), payment-service (refund on cancel), settlement-service</td></tr>
+        <tr><td>payment-events</td><td>payment-service</td><td>order-service (resolve PAYMENT_PENDING → CONFIRMED/FAILED)</td></tr>
+        <tr><td>delivery-events</td><td>delivery-service</td><td>order-service (status mirror), merchant-service (clear queue on delivered)</td></tr>
+        <tr><td>merchant-events</td><td>merchant-service</td><td>(public-facing status changes — approved/suspended)</td></tr>
+        <tr><td>inventory-events</td><td>inventory-service</td><td>(low/out-of-stock signals)</td></tr>
+        <tr><td>product-events</td><td>catalog-service</td><td>inventory-service (backfills a known-product cache on approval)</td></tr>
+      </table>
+      <div class="callout">
+        <span class="label">Retry &amp; dead-letter topics</span>
+        <p>Every consumer is wrapped in <code>@RetryableTopic</code> — a failed message gets retried a few times with backoff on an auto-created <code>-retry</code> topic, then lands on a <code>-dlt</code> (dead letter topic) for manual inspection rather than blocking the partition forever or silently dropping. Suffixes are <strong>service-qualified</strong> (e.g. <code>order-events-merchant-service-retry</code>, not just <code>order-events-retry</code>) specifically because multiple services consume the same topic — an unqualified suffix would collide.</p>
+      </div>
+    </section>
+
+    <!-- ============ 15. CUSTOMER JOURNEY ============ -->
+    <section id="customer-journey" class="proj">
+      <span class="section-eyebrow">15 · features</span>
+      <h2>Customer journey</h2>
+      <p class="lede">Signup/login → browse (city or, now, real-distance-based store discovery, §18) → product detail → cart (single-merchant-per-cart, enforced server-side) → checkout (wallet, Razorpay, or COD) → live order tracking → rate a delivered item → wallet top-up → manage addresses (now requiring a captured location, not just typed text) → notifications.</p>
+    </section>
+
+    <!-- ============ 16. MERCHANT JOURNEY ============ -->
+    <section id="merchant-journey" class="proj">
+      <span class="section-eyebrow">16 · features</span>
+      <h2>Merchant journey</h2>
+      <p class="lede">Apply (with document metadata) → admin review → onboarding → set store hours/location → go live → appear in <code>/nearby</code> → receive orders in a live queue → accept/reject → mark ready → the queue keeps showing the order (with its <em>live</em> pickup/delivery substatus, mirrored from order-service, not a static label) until the rider actually delivers it, not until the merchant's own last click → cancel if no rider ever shows → settlement/payout history, with real item-level detail per entry, not a bare total.</p>
+    </section>
+
+    <!-- ============ 17. DELIVERY JOURNEY ============ -->
+    <section id="delivery-journey" class="proj">
+      <span class="section-eyebrow">17 · features</span>
+      <h2>Delivery partner journey</h2>
+      <p class="lede">Go online (captures current location) → get matched to a nearby ready order via Redis GEO search (§8) → accept/reject → see exactly what to collect (cash/UPI amount, or "already paid") and where to actually take it — a real address and the customer's name/phone, not just a lat/lng — pick up → deliver → task clears from view.</p>
+    </section>
+
+    <!-- ============ 18. CROSS CUTTING ============ -->
+    <section id="cross-cutting" class="proj">
+      <span class="section-eyebrow">18 · features</span>
+      <h2>Cross-cutting: geo search, Cloudinary, and the deployment pipeline</h2>
+
+      <h3><span class="num">18.1</span>Real distance-based store discovery</h3>
+      <p>A genuine bug, found from a live user report: a customer with a valid default address saw zero nearby stores. Root cause — store discovery matched on the <em>city string</em>, exactly (case-insensitively), and every seeded merchant's city field said <code>"Bangalore"</code> or <code>"Bengaluru"</code> — two spellings of the same city, neither matching the customer's own typed city text. The fix replaced string matching with real geometry:</p>
+      <div class="code-wrap"><pre class="code"><span class="c1">// GeoDistance.java — Haversine great-circle distance</span>
+<span class="k">public static</span> <span class="k">double</span> km(<span class="k">double</span> lat1, <span class="k">double</span> lon1, <span class="k">double</span> lat2, <span class="k">double</span> lon2) {
+    <span class="k">double</span> dLat = Math.toRadians(lat2 - lat1);
+    <span class="k">double</span> dLon = Math.toRadians(lon2 - lon1);
+    <span class="k">double</span> a = Math.sin(dLat/2)*Math.sin(dLat/2)
+            + Math.cos(Math.toRadians(lat1))*Math.cos(Math.toRadians(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+    <span class="k">return</span> EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}</pre></div>
+      <p>A merchant now shows up for a customer only if the real distance between their coordinates is within <em>that merchant's own</em> advertised delivery radius, sorted nearest-first — city text is now only a fallback for an address saved before location capture was made mandatory. Verified live against real seeded coordinates, not just unit-tested in isolation.</p>
+
+      <h3><span class="num">18.2</span>Cloudinary signed uploads</h3>
+      <p>Merchant product photos upload directly from the browser to Cloudinary — the bytes never pass through Vicinia's own backend at all. The backend's only job is minting a short-lived HMAC-SHA1 signature over the sorted upload parameters plus the account's secret (Cloudinary's own documented algorithm) — proof that <em>this specific upload request</em> is authorized, without the backend ever touching the image itself.</p>
+
+      <h3><span class="num">18.3</span>The deployment pipeline</h3>
+      <p>One shared, parameterized <code>Dockerfile</code> (a build arg selects which of the 16 services to build) rather than 16 near-duplicate files — multi-stage: a Maven build stage compiling just the target module plus the shared <code>common</code> library, then an Alpine-JRE runtime stage with a fixed <code>-Xmx160m -XX:+UseSerialGC</code> heap, sized against a documented RAM budget for running all 16 services plus self-hosted Postgres/Redis/Redpanda on one free-tier VM. GitHub Actions builds and pushes all 16 images to GHCR on every green CI run, gated by <code>workflow_run</code> so a broken test suite never reaches a deploy step.</p>
+      <div class="callout warn">
+        <span class="label">A real, previously-invisible bug this surfaced</span>
+        <p>None of the 16 services actually had <code>spring-boot-maven-plugin</code> activated in their own <code>pom.xml</code> — only present in the parent POM's <code>pluginManagement</code>, which sets a default but doesn't apply it. <code>mvn package</code> had silently produced a non-executable plain JAR this entire project, invisible until now because local development exclusively used <code>mvn spring-boot:run</code>, which runs from the compiled classpath and never needed a repackaged jar at all. Found only because Dockerizing forced an actual <code>mvn package</code> + <code>java -jar</code> for the first time.</p>
+      </div>
+    </section>
+
+    <!-- ============ 19. RESUME DEEP-DIVE ============ -->
+    <section id="resume-1" class="adv">
+      <span class="section-eyebrow">19 · resume deep-dive</span>
+      <h2>Bullet-by-bullet interview prep</h2>
+      <p class="lede">For each bullet: what it says, what's actually true behind it, and the question you should expect if it's read out loud to you.</p>
+
+      <div class="bullet-card">
+        <div class="bullet-text">Architected a microservices-based hyperlocal commerce platform (Java, Spring Boot, Spring Cloud, Eureka, API Gateway; 16+ services) supporting customer, merchant, delivery, and admin workflows.</div>
+        <h4>Be ready to draw</h4>
+        <p>The service map (§10) from memory, and the request-flow diagram (§11) — gateway, Eureka, the internal-secret trust boundary.</p>
+        <h4>Likely question</h4>
+        <p>"Walk me through what happens, service by service, when a request hits your gateway." → Answer using §11's six steps, naming the actual filters (<code>AuthGlobalFilter</code>, <code>InternalRequestFilter</code>).</p>
+        <h4>Honest limit to know</h4>
+        <p>This is a portfolio-scale system, not one under real production load — say so plainly if asked about scale, and pivot to the <em>design decisions</em> (fault isolation, independent deployability) rather than claiming throughput numbers you don't have.</p>
+      </div>
+    </section>
+
+    <section id="resume-2" class="adv">
+      <span class="section-eyebrow">19 · resume deep-dive</span>
+      <h2>Bullet 2 — event pipeline + Razorpay</h2>
+      <div class="bullet-card">
+        <div class="bullet-text">Built an event-driven order fulfillment pipeline using Kafka/Redpanda with idempotent consumers and per-service retry/DLT topic isolation, integrating Razorpay for payments across independently deployed services.</div>
+        <h4>Be ready to explain</h4>
+        <p>§2's Redpanda-vs-Kafka choice (protocol-compatible, no code difference, smaller footprint), §3's three idempotency techniques with a real example of each, and §14's retry/DLT suffix collision story — this is a genuinely distinctive detail most candidates won't have hit.</p>
+        <h4>Be ready to explain — Razorpay specifically</h4>
+        <p>It's test-mode (§ "traps" below covers exactly how to phrase this). The webhook flow: Razorpay signs the raw request body with HMAC-SHA256; the controller reads it as a plain string (not a parsed DTO) specifically <em>so</em> the signature check runs against the exact bytes that were signed — re-serializing a parsed object isn't guaranteed byte-identical to what was actually signed.</p>
+        <h4>Likely question</h4>
+        <p>"What happens if the same webhook is delivered twice?" → The atomic <code>tryResolve</code> conditional update (§5.2) makes the second delivery a verified no-op — walk through the exact SQL shape.</p>
+      </div>
+    </section>
+
+    <section id="resume-3" class="adv">
+      <span class="section-eyebrow">19 · resume deep-dive</span>
+      <h2>Bullet 3 — Saga + inventory</h2>
+      <div class="bullet-card">
+        <div class="bullet-text">Designed an event-driven checkout Saga with compensating workflows for payment failures and inventory release, and concurrency-safe inventory reservation using atomic conditional updates to prevent overselling.</div>
+        <h4>Be ready to explain</h4>
+        <p>Choreography vs. orchestration (§4.1) and why this system chose choreography; all 7 compensation triggers (§4.2) by name, not just "cancellation happens"; the exact concurrency test result — 20 parallel requests, exactly one success, zero oversell (§5.2) — <strong>use the real number</strong>, it's far more credible than "handles concurrent requests."</p>
+        <h4>Likely question</h4>
+        <p>"What's the actual SQL, or the Spring Data method, behind the atomic update?" → Be able to write <code>UPDATE listings SET available_stock = available_stock - :qty WHERE id = :id AND available_stock &gt;= :qty</code> (or the equivalent <code>@Modifying</code> repository method) on a whiteboard without hesitating.</p>
+      </div>
+    </section>
+
+    <section id="resume-4" class="adv">
+      <span class="section-eyebrow">19 · resume deep-dive</span>
+      <h2>Bullet 4 — resilience + security</h2>
+      <div class="bullet-card">
+        <div class="bullet-text">Implemented a Resilience4j circuit breaker and bulkhead isolating the payment gateway from cascading failures, with Spring Retry on inter-service calls, JWT-based RBAC, BCrypt hashing, and Redis-backed token blacklisting (TTL bound to token expiry).</div>
+        <h4>Be ready to explain</h4>
+        <p>The precise scoping from §7.1 — Resilience4j is the Razorpay path <em>only</em>, Spring Retry is the separate library for general inter-service calls. This bullet already states that distinction correctly — don't blur it if asked to elaborate.</p>
+        <h4>Likely question</h4>
+        <p>"Why cap the blacklist TTL to the token's remaining expiry instead of some fixed value?" → Because a blacklist entry that outlives its token is pure waste (the token would be rejected on expiry anyway), and one that expires <em>before</em> the token would let a revoked token become valid again — matching it exactly is the only correct choice, not an arbitrary one.</p>
+      </div>
+    </section>
+
+    <section id="resume-5" class="adv">
+      <span class="section-eyebrow">19 · resume deep-dive</span>
+      <h2>Bullet 5 — testing + observability</h2>
+      <div class="bullet-card">
+        <div class="bullet-text">Wrote unit and integration tests (JUnit, Testcontainers) covering inventory-reservation concurrency (20 parallel requests, zero oversell), with Prometheus/Grafana observability for latency, consumer lag, and DLQ monitoring.</div>
+        <h4>Be ready to explain</h4>
+        <p>What Testcontainers actually is (spins up a real, disposable Postgres/Kafka in Docker for the test run — testing against the real database engine's real locking behavior, not an in-memory fake that might behave differently under a real race). Why the concurrency test is a Testcontainers integration test and <em>couldn't</em> be a pure mocked unit test — the whole point is proving the database's own row-level locking holds under genuine parallel load, which a mock can't demonstrate.</p>
+        <h4>Trap to not fall into</h4>
+        <p>Don't claim there's an automated test for Saga compensation specifically — there isn't one in this codebase (compensation was verified live, by hand, during development). If asked, say exactly that: verified manually, not covered by an automated test yet, and that's a legitimate, plannable next step, not something to paper over.</p>
+      </div>
+    </section>
+
+    <!-- ============ 20. QUESTION BANK ============ -->
+    <section id="question-bank" class="ref">
+      <span class="section-eyebrow">20 · interview prep</span>
+      <h2>Question bank</h2>
+
+      <div class="qa">
+        <p class="q">Why Kafka/Redpanda instead of just calling other services with REST everywhere?</p>
+        <p class="a">Fan-out and decoupling. If order-service had to synchronously call cart-service, merchant-service, and settlement-service directly on every order, it would become a single point of failure for all three, and adding a fourth interested service later would mean editing order-service's code. With events, order-service publishes once, knows nothing about who's listening, and a new consumer can be added with zero changes to the publisher.</p>
+      </div>
+      <div class="qa">
+        <p class="q">What happens if a Kafka consumer crashes mid-processing?</p>
+        <p class="a">Its offset for that message was never committed, so on restart (or on another instance in the same consumer group picking up its partition) the message is redelivered — which is exactly why every consumer has to be idempotent (§3). This is the concrete mechanism behind "at-least-once delivery."</p>
+      </div>
+      <div class="qa">
+        <p class="q">Single point of failure in this architecture?</p>
+        <p class="a">The API Gateway (every request passes through it) and Eureka (if the registry is down, the gateway can't resolve new service instances, though already-cached routes keep working briefly). Both are real, worth naming unprompted rather than waiting to be caught not knowing — a good system-design answer names its own weak points.</p>
+      </div>
+      <div class="qa">
+        <p class="q">Why does the gateway strip client-supplied X-User-* headers instead of trusting them?</p>
+        <p class="a">Because those headers are exactly what downstream services use to make authorization decisions — if a client could set <code>X-User-Roles: ADMIN</code> directly on a request to a downstream service, the entire RBAC system would be bypassable. The gateway is the only thing allowed to set them, and it does so only after independently validating the JWT itself.</p>
+      </div>
+      <div class="qa">
+        <p class="q">How would you scale this system if traffic grew 100x?</p>
+        <p class="a">Each service already scales independently (that's the whole point of the split) — add more instances of the hot path services (order, inventory, payment) behind Eureka, no code change needed. The harder problems: the single self-hosted Postgres instance becomes a bottleneck (would need read replicas or eventually splitting the busiest services onto their own Postgres instances), and Redpanda's single-node setup (fine for a free-tier VM, not for real production throughput) would need a real multi-broker cluster.</p>
+      </div>
+      <div class="qa">
+        <p class="q">Why choose to self-host Postgres/Redis/Redpanda in production instead of managed services?</p>
+        <p class="a">A specific, considered tradeoff, not "cheaper is always better": managed free tiers commonly autosuspend on inactivity (cold-start latency is a real problem for a system doing multiple synchronous cross-service calls per checkout), and self-hosting on one already-provisioned free-tier VM has zero incremental cost. It's a decision made after evaluating the actual failure mode a managed free tier would introduce, not a default.</p>
+      </div>
+    </section>
+
+    <!-- ============ 21. TRAPS ============ -->
+    <section id="traps" class="ref">
+      <span class="section-eyebrow">21 · interview prep</span>
+      <h2>Traps to avoid — claims that sound good but don't survive one follow-up question</h2>
+      <dl class="terms">
+        <div><dt>"Transactional outbox"</dt><dd>Don't say this. There's no outbox table or relay process in this codebase — events are published as a separate step after the DB commit completes, which is simpler but doesn't give the same atomicity guarantee a real outbox pattern provides (a crash between commit and publish would lose the event). If asked "what happens if the process crashes right after the DB commit but before the Kafka publish," the honest answer is: the event is lost, and that's a known, accepted gap, not something the current design solves.</dd></div>
+        <div><dt>"OTP-based authentication"</dt><dd>Don't say this. There's no OTP flow anywhere in this codebase. Don't confuse it with the real HMAC-SHA256 usage, which verifies Razorpay's webhook signatures — a different mechanism, for a different purpose.</dd></div>
+        <div><dt>"Resilience4j retry policies across services"</dt><dd>Resilience4j here is circuit breaker + bulkhead, scoped to one call path (Razorpay). General inter-service retry is Spring Retry, a separate library. Getting this backwards under questioning is an easy, avoidable stumble.</dd></div>
+        <div><dt>"Redis-backed rate limiting" / "caching" / "blacklisting" as one vague clause</dt><dd>These are three genuinely different Redis usages (§8) — be ready to explain each independently, not as one interchangeable blob.</dd></div>
+        <div><dt>Implying this handles real production traffic/scale</dt><dd>It's a portfolio project, single free-tier VM, no load testing performed. Own that plainly — pivot to design reasoning (§ scaling question above) rather than implying numbers that were never measured.</dd></div>
+        <div><dt>"Live in production" / "processing real payments"</dt><dd>Razorpay integration is test-mode. The engineering (real API calls, real signed webhooks, real signature verification in both directions) is genuine — the money movement is not. Say exactly that if asked.</dd></div>
+        <div><dt>"Automated tests cover the Saga"</dt><dd>They don't — see the trap note in §19's bullet 5. Compensation was verified manually during development, not by an automated test suite.</dd></div>
+      </dl>
+    </section>
+
+    <!-- ============ 22. SERVICE TABLE ============ -->
+    <section id="service-table" class="ref">
+      <span class="section-eyebrow">22 · reference</span>
+      <h2>Full service table</h2>
+      <table class="cheat-table">
+        <tr><th>Service</th><th>Port</th><th>Datastore</th><th>Owns</th></tr>
+        <tr><td>discovery-server</td><td>8761</td><td>—</td><td>Eureka service registry</td></tr>
+        <tr><td>config-server</td><td>8888</td><td>—</td><td>Shared config, served natively from a bundled repo</td></tr>
+        <tr><td>api-gateway</td><td>8080</td><td>—</td><td>Public entry point, JWT validation, CORS, rate limiting</td></tr>
+        <tr><td>auth-service</td><td>8081</td><td>Postgres + Redis</td><td>Signup/login, JWT issuance, blacklist, refresh tokens</td></tr>
+        <tr><td>user-service</td><td>8082</td><td>Postgres</td><td>Profiles, addresses</td></tr>
+        <tr><td>merchant-service</td><td>8083</td><td>Postgres</td><td>Store onboarding, order task queue</td></tr>
+        <tr><td>catalog-service</td><td>8084</td><td>MongoDB</td><td>Global product catalog, categories</td></tr>
+        <tr><td>inventory-service</td><td>8085</td><td>Postgres</td><td>Per-merchant listings, stock reservation</td></tr>
+        <tr><td>cart-service</td><td>8086</td><td>Redis</td><td>Active cart per customer</td></tr>
+        <tr><td>coupon-service</td><td>8087</td><td>Postgres</td><td>Coupon validation, usage limits</td></tr>
+        <tr><td>payment-service</td><td>8088</td><td>Postgres</td><td>Wallet, Razorpay integration</td></tr>
+        <tr><td>order-service</td><td>8089</td><td>Postgres</td><td>Order lifecycle — the canonical status</td></tr>
+        <tr><td>delivery-service</td><td>8090</td><td>Postgres + Redis</td><td>Rider assignment, GEO matching</td></tr>
+        <tr><td>notification-service</td><td>8091</td><td>MongoDB</td><td>In-app notifications</td></tr>
+        <tr><td>review-service</td><td>8092</td><td>MongoDB</td><td>Product ratings/reviews</td></tr>
+        <tr><td>settlement-service</td><td>8093</td><td>Postgres</td><td>Merchant payout entries</td></tr>
+      </table>
+    </section>
+
+    <!-- ============ 23. GLOSSARY ============ -->
+    <section id="glossary" class="ref">
+      <span class="section-eyebrow">23 · reference</span>
+      <h2>Glossary</h2>
+      <dl class="terms">
+        <div><dt>Choreography</dt><dd>Coordinating a multi-service flow via each service independently reacting to events, with no central coordinator (§4.1).</dd></div>
+        <div><dt>Compensating transaction</dt><dd>The "undo" step of a Saga — reversing a prior local transaction's effect (§4).</dd></div>
+        <div><dt>Consumer group</dt><dd>A named set of consumers sharing a topic's partitions (§2.1).</dd></div>
+        <div><dt>DLT / DLQ</dt><dd>Dead letter topic/queue — where a message lands after exhausting its retry attempts, for manual inspection.</dd></div>
+        <div><dt>Idempotent</dt><dd>Safe to apply more than once with the same effect as applying it once (§3).</dd></div>
+        <div><dt>JTI</dt><dd>JWT ID — a unique identifier embedded in a token, used as the blacklist's key.</dd></div>
+        <div><dt>RBAC</dt><dd>Role-Based Access Control — authorizing via roles that grant permissions (§6.2).</dd></div>
+        <div><dt>Saga</dt><dd>A sequence of local transactions across services, each with a compensating action (§4).</dd></div>
+      </dl>
+    </section>
+
+  </main>
+</div>
+
+<footer class="done mono">vicinia · interview prep &amp; concepts guide · 2026-08-27 · no personal information in this document</footer>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function (l) { return document.querySelector(l.getAttribute('href')); });
+
+  function setActive(id) {
+    links.forEach(function (l) {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+    });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { if (s) observer.observe(s); });
+  }
+})();
+</script>
+
+</body>
+</html>
