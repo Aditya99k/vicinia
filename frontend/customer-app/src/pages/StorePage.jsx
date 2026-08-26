@@ -4,21 +4,22 @@ import { useCart } from '../context/CartContext';
 import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
 import { useProductImages } from '../hooks/useProductImages';
 import { listingsForMerchant } from '../api/inventory';
-import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, NavigationIcon, PackageIcon, StoreIcon } from '../components/Icons';
+import { ArrowLeftIcon, ClockIcon, NavigationIcon, PackageIcon, StoreIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
+import QtyStepper from '../components/QtyStepper';
 import { estimateDelivery } from '../utils/deliveryEstimate';
 import { formatMoney } from '../utils/format';
 
 export default function StorePage() {
   const { merchantId } = useParams();
-  const { cart, addItem, clear } = useCart();
+  const { cart, addItem, updateItem, removeItem, clear } = useCart();
   const directory = useMerchantDirectory();
   const merchant = directory.get(merchantId);
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState(null);
-  const [addedId, setAddedId] = useState(null);
+  const [busyListingId, setBusyListingId] = useState(null);
   const [conflict, setConflict] = useState(null);
 
   const { imageFor, categoryFor } = useProductImages(listings.map((l) => l.productId));
@@ -36,8 +37,6 @@ export default function StorePage() {
     setConflict(null);
     try {
       await addItem(listing.id, 1);
-      setAddedId(listing.id);
-      setTimeout(() => setAddedId(null), 1500);
     } catch (err) {
       if (err?.response?.status === 409) setConflict(listing);
     } finally {
@@ -49,6 +48,19 @@ export default function StorePage() {
     if (!conflict) return;
     await clear();
     await handleAdd(conflict);
+  }
+
+  async function handleQty(listing, quantity) {
+    setBusyListingId(listing.id);
+    try {
+      if (quantity <= 0) {
+        await removeItem(listing.id);
+      } else {
+        await updateItem(listing.id, quantity);
+      }
+    } finally {
+      setBusyListingId(null);
+    }
   }
 
   if (loading) return <div className="page-loading"><span className="spinner" /> Loading…</div>;
@@ -106,25 +118,26 @@ export default function StorePage() {
                 <div className="product-card-body">
                   <div className="brand">{l.productCategory}</div>
                   <div className="name">{l.productName}</div>
-                  {cartQuantity > 0 && <span className="badge badge-success" style={{ marginTop: 4 }}>{cartQuantity} in cart</span>}
                 </div>
                 <div className="product-card-price-row">
                   <span className="price">{formatMoney(l.price)}</span>
-                  <button
-                    className={`btn btn-sm ${addedId === l.id ? 'btn-secondary' : 'btn-primary'}`}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(l); }}
-                    disabled={l.availableStock === 0 || addingId === l.id}
-                  >
-                    {addingId === l.id ? (
-                      <span className="spinner" />
-                    ) : addedId === l.id ? (
-                      <CheckCircleIcon style={{ width: 14, height: 14 }} />
-                    ) : l.availableStock === 0 ? (
-                      'Out of stock'
-                    ) : (
-                      'Add'
-                    )}
-                  </button>
+                  {cartQuantity > 0 ? (
+                    <QtyStepper
+                      quantity={cartQuantity}
+                      busy={busyListingId === l.id}
+                      maxReached={cartQuantity >= l.availableStock}
+                      onIncrement={() => handleQty(l, cartQuantity + 1)}
+                      onDecrement={() => handleQty(l, cartQuantity - 1)}
+                    />
+                  ) : (
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAdd(l); }}
+                      disabled={l.availableStock === 0 || addingId === l.id}
+                    >
+                      {addingId === l.id ? <span className="spinner" /> : l.availableStock === 0 ? 'Out of stock' : 'Add'}
+                    </button>
+                  )}
                 </div>
               </Link>
             );

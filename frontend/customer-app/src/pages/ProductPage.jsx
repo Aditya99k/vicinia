@@ -7,13 +7,14 @@ import { useCart } from '../context/CartContext';
 import { useMerchantDirectory } from '../hooks/useMerchantDirectory';
 import { ArrowLeftIcon, StarIcon, StoreIcon } from '../components/Icons';
 import ProductImage from '../components/ProductImage';
+import QtyStepper from '../components/QtyStepper';
 import { formatMoney, formatDate } from '../utils/format';
 
 export default function ProductPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const highlightedListingId = searchParams.get('listing');
-  const { cart, addItem, clear } = useCart();
+  const { cart, addItem, updateItem, removeItem, clear } = useCart();
   const directory = useMerchantDirectory();
 
   const [product, setProduct] = useState(null);
@@ -23,6 +24,7 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [addingId, setAddingId] = useState(null);
+  const [busyListingId, setBusyListingId] = useState(null);
   const [conflict, setConflict] = useState(null);
 
   useEffect(() => {
@@ -70,6 +72,19 @@ export default function ProductPage() {
     await handleAdd(conflict);
   }
 
+  async function handleQty(listing, quantity) {
+    setBusyListingId(listing.id);
+    try {
+      if (quantity <= 0) {
+        await removeItem(listing.id);
+      } else {
+        await updateItem(listing.id, quantity);
+      }
+    } finally {
+      setBusyListingId(null);
+    }
+  }
+
   if (loading) return <div className="page-loading"><span className="spinner" /> Loading…</div>;
   if (!product) return <div className="empty-state"><h3>Product not found</h3></div>;
 
@@ -113,7 +128,6 @@ export default function ProductPage() {
           ) : (
             <div className="listing-list">
               {listings.map((l) => {
-                const inThisCart = cart?.merchantId === l.merchantId;
                 const cartQuantity = cart?.items?.find((i) => i.listingId === l.id)?.quantity || 0;
                 const storeName = directory.get(l.merchantId)?.storeName;
                 const highlighted = l.id === highlightedListingId;
@@ -125,16 +139,25 @@ export default function ProductPage() {
                       <div className="listing-price-row">
                         <span className="price">{formatMoney(l.price)}</span>
                         <span className="stock muted">{l.availableStock > 0 ? `${l.availableStock} in stock` : 'Out of stock'}</span>
-                        {cartQuantity > 0 && <span className="badge badge-success">{cartQuantity} in cart</span>}
                       </div>
                     </div>
-                    <button
-                      className={`btn btn-sm ${inThisCart ? 'btn-secondary' : 'btn-primary'}`}
-                      disabled={l.availableStock === 0 || addingId === l.id}
-                      onClick={() => handleAdd(l)}
-                    >
-                      {addingId === l.id ? <span className="spinner" /> : cartQuantity > 0 ? 'Add another' : 'Add to cart'}
-                    </button>
+                    {cartQuantity > 0 ? (
+                      <QtyStepper
+                        quantity={cartQuantity}
+                        busy={busyListingId === l.id}
+                        maxReached={cartQuantity >= l.availableStock}
+                        onIncrement={() => handleQty(l, cartQuantity + 1)}
+                        onDecrement={() => handleQty(l, cartQuantity - 1)}
+                      />
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-primary"
+                        disabled={l.availableStock === 0 || addingId === l.id}
+                        onClick={() => handleAdd(l)}
+                      >
+                        {addingId === l.id ? <span className="spinner" /> : 'Add to cart'}
+                      </button>
+                    )}
                   </div>
                 );
               })}
