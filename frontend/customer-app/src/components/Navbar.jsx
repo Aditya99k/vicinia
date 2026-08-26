@@ -1,9 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../hooks/useTheme';
 import { homePathForRole, primaryRole } from '../utils/roles';
-import { CartIcon, MoonIcon, SunIcon } from './Icons';
+import { CartIcon, MenuIcon, MoonIcon, SunIcon, XIcon } from './Icons';
 import SearchBox from './SearchBox';
 import NotificationsBell from './NotificationsBell';
 
@@ -50,9 +51,39 @@ export default function Navbar() {
   const { itemCount } = useCart();
   const initialQuery = new URLSearchParams(location.search).get('q') || '';
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileNavRef = useRef(null);
+
+  // Same outside-click-to-close pattern as NotificationsBell's dropdown.
+  useEffect(() => {
+    function onOutsideClick(e) {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target)) setMobileOpen(false);
+    }
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, []);
+
+  // A route change (tapping a link, or navigating some other way) should
+  // always close the panel — otherwise it silently stays open, hovering
+  // over the next page, if a click lands on something the outside-click
+  // listener doesn't count as "outside" (e.g. the router swapping content
+  // under the same pointer position).
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
   return (
     <header className="navbar">
       <div className="navbar-inner">
+        <button
+          className="icon-btn navbar-hamburger"
+          onClick={() => setMobileOpen((o) => !o)}
+          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen ? <XIcon style={{ width: 18, height: 18 }} /> : <MenuIcon style={{ width: 18, height: 18 }} />}
+        </button>
+
         <Link to={homePathForRole(role)} className="navbar-brand">
           <span className="mark">V</span>
           <span className="wordmark">Vicinia</span>
@@ -82,6 +113,14 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      {mobileOpen && (
+        <nav className="navbar-mobile-panel" ref={mobileNavRef}>
+          {links.map((l) => (
+            <NavLink key={l.to} to={l.to} end={l.end}>{l.label}</NavLink>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }

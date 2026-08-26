@@ -82,6 +82,8 @@
 }
 .search-suggestion-all:hover { background: var(--brand-soft); }
 
+.navbar-hamburger { display: none; flex-shrink: 0; }
+
 .navbar-links { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .navbar-links a {
   font-family: var(--font-display); font-weight: 600; font-size: 14px;
@@ -111,8 +113,33 @@
 @media (max-width: 860px) {
   .navbar-search { display: none; }
   .page-container { padding: 22px 18px 56px; }
-  .navbar-inner { padding: 12px 18px; }
+  .navbar-inner { padding: 12px 18px; gap: 14px; }
+  /* Up to 5 role-based text links plus 3-4 action icons never fit one row
+     on a phone — collapsed into the hamburger's dropdown panel instead of
+     trying to shrink text that's already near-minimum size. */
+  .navbar-hamburger { display: flex; }
+  .navbar-links { display: none; }
+  /* .navbar-search-wrap's flex:1 was what pushed .navbar-actions to the
+     right edge — with both it and .navbar-links (margin-left:auto) hidden
+     above, nothing does that job anymore without this. */
+  .navbar-actions { margin-left: auto; }
 }
+
+.navbar-mobile-panel {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--line);
+  padding: 6px 18px 10px;
+  background: var(--surface);
+  /* Below the sticky navbar (z-index 30), above ordinary page content. */
+  position: relative; z-index: 30;
+}
+.navbar-mobile-panel a {
+  font-family: var(--font-display); font-weight: 600; font-size: 14.5px;
+  color: var(--muted); padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.navbar-mobile-panel a:last-child { border-bottom: none; }
+.navbar-mobile-panel a.active { color: var(--brand-ink); }
 
 /* ============ Buttons ============ */
 .btn {
@@ -174,6 +201,7 @@
   background: var(--surface);
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
 
 .image-upload-drop {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
@@ -842,6 +870,15 @@
 .cart-added-toast-summary { font-size: 11.5px; margin: 10px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .cart-added-toast-actions { display: flex; gap: 8px; }
 .cart-added-toast-actions .btn { flex: 1; }
+
+@media (max-width: 420px) {
+  /* Both are fixed-position with a right-anchored width that assumes at
+     least ~375px of viewport — comfortable on any phone actually sold
+     today, but a genuinely narrow one (or a folded/split-screen view)
+     could clip the right edge. Left+right anchoring instead of a fixed
+     width removes the assumption entirely. */
+  .new-order-toast, .cart-added-toast { left: 12px; right: 12px; width: auto; }
+}
 
 .merchant-order-card.action-flash, .active-task-card.action-flash { animation: card-flash 0.9s ease-out; }
 @keyframes card-flash {
