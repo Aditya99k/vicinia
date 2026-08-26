@@ -89,7 +89,7 @@ export default function AddressFormModal({ initial, onClose, onSubmit, submittin
           </div>
 
           <div className="field">
-            <label>Precise location</label>
+            <label>Precise location (required)</label>
             <button type="button" className="btn btn-secondary btn-sm" onClick={useCurrentLocation} disabled={locating} style={{ alignSelf: 'flex-start' }}>
               {locating ? (
                 <span className="spinner" />
@@ -100,9 +100,15 @@ export default function AddressFormModal({ initial, onClose, onSubmit, submittin
               )}
             </button>
             <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>
-              Lets your delivery partner navigate straight to this address instead of just a text description.
+              Required — this is how stores near you get found, and how your delivery partner navigates
+              straight to your door instead of just a text description.
             </p>
             {locationError && <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{locationError}</p>}
+            {!hasLocation && !locating && !locationError && (
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                Tap "Use my current location" above to continue.
+              </p>
+            )}
           </div>
 
           <div className="checkbox-row">
@@ -117,7 +123,7 @@ export default function AddressFormModal({ initial, onClose, onSubmit, submittin
 
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            <button type="submit" className="btn btn-primary" disabled={submitting || !hasLocation}>
               {submitting ? <span className="spinner" /> : initial ? 'Save changes' : 'Add address'}
             </button>
           </div>

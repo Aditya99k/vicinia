@@ -50,9 +50,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const city = addresses.find((a) => a.isDefault)?.city || addresses[0]?.city;
-    if (!city) return;
-    nearby(city).then(setMerchants).catch(() => setMerchants([]));
+    const address = addresses.find((a) => a.isDefault) || addresses[0];
+    if (!address) return;
+    // Coordinates, when on file, take over entirely server-side (real
+    // distance + each merchant's own delivery radius) — city is only ever
+    // the fallback for an address saved before location was required. See
+    // MerchantService.nearby's own comment for why this also happens to
+    // fix "Bangalore" vs "Bengaluru" style city-string mismatches.
+    nearby(address.city, address.latitude, address.longitude).then(setMerchants).catch(() => setMerchants([]));
   }, [addresses]);
 
   useEffect(() => {

@@ -28,8 +28,8 @@ export function reopenStore() {
   return apiClient.post('/api/merchants/me/reopen').then((r) => r.data);
 }
 
-export function nearby(city) {
-  return apiClient.get('/api/merchants/nearby', { params: { city } }).then((r) => r.data);
+export function nearby(city, latitude, longitude) {
+  return apiClient.get('/api/merchants/nearby', { params: { city, latitude, longitude } }).then((r) => r.data);
 }
 
 /** Fresh, authoritative open/closed check for one store — the client-side merchant directory (useMerchantDirectory) is cached for the whole session and can go stale if a store closes after it's loaded. */

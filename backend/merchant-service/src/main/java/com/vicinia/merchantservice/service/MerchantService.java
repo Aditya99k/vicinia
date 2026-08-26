@@ -11,9 +11,11 @@ import com.vicinia.merchantservice.exception.MerchantNotFoundException;
 import com.vicinia.merchantservice.exception.OnboardingIncompleteException;
 import com.vicinia.merchantservice.messaging.MerchantEventPublisher;
 import com.vicinia.merchantservice.repository.MerchantRepository;
+import com.vicinia.merchantservice.util.GeoDistance;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -107,9 +109,38 @@ public class MerchantService {
         return merchantRepository.save(merchant);
     }
 
-    public List<Merchant> nearby(String city) {
+    /**
+     * lat/lng, when given, take over entirely: every LIVE merchant with its
+     * own coordinates on file is distance-checked against the customer's
+     * position and kept only if within that merchant's own deliveryRadiusKm
+     * (a merchant advertising "I deliver within 5km" shouldn't show up for
+     * a customer 8km away, however far the customer's own search radius
+     * might reach), sorted nearest-first. City matching is the fallback for
+     * an address with no coordinates yet — increasingly rare now that
+     * AddressFormModal requires them, but old addresses can still predate
+     * that requirement.
+     *
+     * This also happens to be the real fix for a genuine bug city matching
+     * had no way to avoid: "Bangalore" and "Bengaluru" are the same city
+     * typed two different ways, and exact (even case-insensitive) string
+     * matching treats them as different places — a merchant registered
+     * under one spelling was simply invisible to a customer whose address
+     * used the other. Distance-based matching sidesteps the whole problem;
+     * it never looks at the city string at all.
+     */
+    public List<Merchant> nearby(String city, Double latitude, Double longitude) {
+        List<Merchant> live = merchantRepository.findByStatus(MerchantStatus.LIVE);
+
+        if (latitude != null && longitude != null) {
+            return live.stream()
+                    .filter(m -> m.getLatitude() != null && m.getLongitude() != null)
+                    .filter(m -> GeoDistance.km(latitude, longitude, m.getLatitude(), m.getLongitude()) <= m.getDeliveryRadiusKm())
+                    .sorted(Comparator.comparingDouble(m -> GeoDistance.km(latitude, longitude, m.getLatitude(), m.getLongitude())))
+                    .toList();
+        }
+
         return (city == null || city.isBlank())
-                ? merchantRepository.findByStatus(MerchantStatus.LIVE)
+                ? live
                 : merchantRepository.findByStatusAndCityIgnoreCase(MerchantStatus.LIVE, city);
     }
 

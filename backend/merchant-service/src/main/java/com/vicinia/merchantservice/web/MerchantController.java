@@ -9,6 +9,7 @@ import com.vicinia.merchantservice.dto.MerchantSummaryResponse;
 import com.vicinia.merchantservice.dto.UpdateHoursRequest;
 import com.vicinia.merchantservice.dto.UpdateStoreProfileRequest;
 import com.vicinia.merchantservice.service.MerchantService;
+import com.vicinia.merchantservice.util.GeoDistance;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -75,10 +76,21 @@ public class MerchantController {
         return MerchantResponse.from(merchantService.reopen(UUID.fromString(userId)));
     }
 
-    /** Public per api-gateway's public-paths (no auth headers present). */
+    /** Public per api-gateway's public-paths (no auth headers present). See MerchantService.nearby's own comment for the lat/lng vs city precedence. */
     @GetMapping("/nearby")
-    public List<MerchantSummaryResponse> nearby(@RequestParam(required = false) String city) {
-        return merchantService.nearby(city).stream().map(MerchantSummaryResponse::from).toList();
+    public List<MerchantSummaryResponse> nearby(@RequestParam(required = false) String city,
+                                                 @RequestParam(required = false) Double latitude,
+                                                 @RequestParam(required = false) Double longitude) {
+        return merchantService.nearby(city, latitude, longitude).stream()
+                .map(m -> MerchantSummaryResponse.from(m, distanceKmOrNull(m, latitude, longitude)))
+                .toList();
+    }
+
+    private Double distanceKmOrNull(Merchant m, Double latitude, Double longitude) {
+        if (latitude == null || longitude == null || m.getLatitude() == null || m.getLongitude() == null) {
+            return null;
+        }
+        return GeoDistance.km(latitude, longitude, m.getLatitude(), m.getLongitude());
     }
 
     /** A store's live open/closed state — see MerchantStatusResponse for why this exists alongside /nearby. Not public: only reached from an already-authenticated customer's store/product page. */

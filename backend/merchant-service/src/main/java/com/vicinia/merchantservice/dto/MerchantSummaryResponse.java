@@ -13,6 +13,12 @@ import java.time.LocalTime;
  * anything, just stop the frontend from being able to join "this store" to
  * "its listings" (no listings-by-merchant endpoint exists — see
  * frontend/customer-app/README.md).
+ *
+ * distanceKm is null unless the request supplied the customer's own
+ * coordinates (MerchantService.nearby's lat/lng path) — the frontend falls
+ * back to its own placeholder estimate when it's absent (e.g. the
+ * unfiltered system-wide directory call useMerchantDirectory makes, which
+ * has no customer location to compute a real distance from at all).
  */
 public record MerchantSummaryResponse(
         String id,
@@ -22,9 +28,14 @@ public record MerchantSummaryResponse(
         String city,
         Double deliveryRadiusKm,
         LocalTime openTime,
-        LocalTime closeTime
+        LocalTime closeTime,
+        Double distanceKm
 ) {
     public static MerchantSummaryResponse from(Merchant m) {
+        return from(m, null);
+    }
+
+    public static MerchantSummaryResponse from(Merchant m, Double distanceKm) {
         return new MerchantSummaryResponse(
                 m.getId().toString(),
                 m.getOwnerUserId().toString(),
@@ -33,7 +44,8 @@ public record MerchantSummaryResponse(
                 m.getCity(),
                 m.getDeliveryRadiusKm(),
                 m.getOpenTime(),
-                m.getCloseTime()
+                m.getCloseTime(),
+                distanceKm
         );
     }
 }
