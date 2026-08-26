@@ -15,3 +15,7 @@ export function getOrder(id) {
 export function cancelOrder(id, reason) {
   return apiClient.post(`/api/orders/${id}/cancel`, { reason }).then((r) => r.data);
 }
+
+export function getOrderForMerchant(id) {
+  return apiClient.get(`/api/orders/${id}/merchant-view`).then((r) => r.data);
+}

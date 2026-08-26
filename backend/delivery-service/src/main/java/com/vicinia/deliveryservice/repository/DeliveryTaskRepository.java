@@ -12,4 +12,6 @@ public interface DeliveryTaskRepository extends JpaRepository<DeliveryTask, UUID
     Optional<DeliveryTask> findByOrderId(UUID orderId);
 
     List<DeliveryTask> findByStatus(DeliveryTaskStatus status);
+
+    List<DeliveryTask> findByPartnerIdAndStatusInOrderByAssignedAtDesc(UUID partnerId, List<DeliveryTaskStatus> statuses);
 }

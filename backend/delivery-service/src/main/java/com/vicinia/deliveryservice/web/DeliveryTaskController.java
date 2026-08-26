@@ -4,12 +4,14 @@ import com.vicinia.common.security.HeaderNames;
 import com.vicinia.deliveryservice.dto.DeliveryTaskResponse;
 import com.vicinia.deliveryservice.service.DeliveryService;
 import com.vicinia.deliveryservice.util.PermissionUtil;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /** A delivery partner acting on a task assigned to them — ownership is enforced in DeliveryService.getOwnedTask, not here. */
@@ -23,6 +25,13 @@ public class DeliveryTaskController {
 
     public DeliveryTaskController(DeliveryService deliveryService) {
         this.deliveryService = deliveryService;
+    }
+
+    @GetMapping("/mine")
+    public List<DeliveryTaskResponse> mine(@RequestHeader(HeaderNames.USER_ID) String userId,
+                                            @RequestHeader(HeaderNames.USER_PERMISSIONS) String permissions) {
+        PermissionUtil.require(permissions, REQUIRED_PERMISSION);
+        return deliveryService.myActiveTasks(UUID.fromString(userId)).stream().map(DeliveryTaskResponse::from).toList();
     }
 
     @PostMapping("/{orderId}/accept")

@@ -34,13 +34,6 @@ const SECTION_LINKS = {
   ],
 };
 
-function sectionForPath(pathname) {
-  if (pathname.startsWith('/merchant')) return 'MERCHANT';
-  if (pathname.startsWith('/delivery')) return 'DELIVERY_PARTNER';
-  if (pathname.startsWith('/admin')) return 'ADMIN';
-  return 'CUSTOMER';
-}
-
 export default function Navbar() {
   const { auth } = useAuth();
   const { theme, toggle } = useTheme();
@@ -48,10 +41,12 @@ export default function Navbar() {
   const location = useLocation();
   const initial = (auth?.email || '?').trim().charAt(0).toUpperCase();
 
+  // Driven by the account's own role, not the current URL — a rider on the
+  // shared /profile page (which matches none of the role-specific prefixes)
+  // must still see rider nav, never fall through to customer links/chrome.
   const role = primaryRole(auth);
-  const section = sectionForPath(location.pathname);
-  const links = SECTION_LINKS[section] || SECTION_LINKS.CUSTOMER;
-  const showCommerceChrome = section === 'CUSTOMER';
+  const links = SECTION_LINKS[role] || SECTION_LINKS.CUSTOMER;
+  const showCommerceChrome = role === 'CUSTOMER';
 
   const { itemCount } = useCart();
   const initialQuery = new URLSearchParams(location.search).get('q') || '';

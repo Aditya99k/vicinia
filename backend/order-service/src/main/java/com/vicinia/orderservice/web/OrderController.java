@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
-/** Customer-facing, gateway-routed — every endpoint scoped to the caller's own orders (X-User-Id), no admin surface in this stage. */
+/** Customer-facing, gateway-routed — every endpoint scoped to the caller's own orders (X-User-Id), except /merchant-view which scopes by the caller as the owning merchant instead. No admin surface in this stage. */
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -46,6 +46,12 @@ public class OrderController {
     @GetMapping("/{id}")
     public OrderResponse getById(@RequestHeader(HeaderNames.USER_ID) String userId, @PathVariable UUID id) {
         return OrderResponse.from(orderService.getById(id, UUID.fromString(userId)));
+    }
+
+    /** The merchant's own view of one of their orders — full item detail, scoped by merchantId instead of customer userId. */
+    @GetMapping("/{id}/merchant-view")
+    public OrderResponse getByIdForMerchant(@RequestHeader(HeaderNames.USER_ID) String userId, @PathVariable UUID id) {
+        return OrderResponse.from(orderService.getByIdForMerchant(id, UUID.fromString(userId)));
     }
 
     @PostMapping("/{id}/cancel")

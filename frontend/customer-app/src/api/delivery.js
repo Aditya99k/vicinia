@@ -16,6 +16,10 @@ export function updateLocation({ latitude, longitude }) {
   return apiClient.post('/api/delivery/partners/location', { latitude, longitude }).then((r) => r.data);
 }
 
+export function myActiveTasks() {
+  return apiClient.get('/api/delivery/tasks/mine').then((r) => r.data);
+}
+
 export function acceptTask(orderId) {
   return apiClient.post(`/api/delivery/tasks/${orderId}/accept`).then((r) => r.data);
 }

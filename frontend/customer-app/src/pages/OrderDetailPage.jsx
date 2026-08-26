@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { cancelOrder, getOrder } from '../api/order';
 import { createReview } from '../api/review';
+import { useProductImages } from '../hooks/useProductImages';
 import { ArrowLeftIcon, CheckCircleIcon, PackageIcon, StarIcon, TruckIcon } from '../components/Icons';
 import StatusBadge from '../components/StatusBadge';
 import ShopBanner from '../components/ShopBanner';
+import ProductImage from '../components/ProductImage';
 import { useActionDialog } from '../hooks/useActionDialog';
 import { formatDateTime, formatMoney } from '../utils/format';
+
+const POLL_MS = 8000;
+const LIVE_STATUSES = new Set(['CREATED', 'PAYMENT_PENDING', 'CONFIRMED', 'MERCHANT_ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY']);
 
 const HAPPY_PATH = [
   { status: 'CONFIRMED', label: 'Order confirmed', icon: CheckCircleIcon },
@@ -33,12 +38,27 @@ export default function OrderDetailPage() {
   const [reviewedIds, setReviewedIds] = useState(new Set());
   const { confirm, dialog } = useActionDialog();
 
-  function load() {
-    setLoading(true);
-    getOrder(id).then(setOrder).catch(() => setError('Could not load this order.')).finally(() => setLoading(false));
-  }
+  const load = useCallback((silent) => {
+    if (!silent) setLoading(true);
+    getOrder(id)
+      .then(setOrder)
+      .catch(() => { if (!silent) setError('Could not load this order.'); })
+      .finally(() => { if (!silent) setLoading(false); });
+  }, [id]);
 
-  useEffect(load, [id]);
+  useEffect(() => {
+    load(false);
+  }, [load]);
+
+  // Polls while the order is still moving — stops once it lands on a
+  // terminal status, so a delivered/cancelled order doesn't keep pinging.
+  useEffect(() => {
+    if (!order || !LIVE_STATUSES.has(order.status)) return;
+    const interval = setInterval(() => load(true), POLL_MS);
+    return () => clearInterval(interval);
+  }, [order, load]);
+
+  const { imageFor, categoryFor } = useProductImages((order?.items || []).map((i) => i.productId));
 
   async function handleCancel() {
     if (!(await confirm('Cancel this order?', { title: 'Cancel order', danger: true, confirmLabel: 'Cancel order' }))) return;
@@ -120,7 +140,10 @@ export default function OrderDetailPage() {
       <div className="card" style={{ marginBottom: 16 }}>
         {order.items.map((item) => (
           <div className="order-item-row" key={item.listingId}>
-            <div>
+            <div className="order-item-thumb">
+              <ProductImage src={imageFor(item.productId)} name={item.productName} category={categoryFor(item.productId)} />
+            </div>
+            <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 13.5 }}>{item.productName}</div>
               <div className="muted">{formatMoney(item.unitPrice)} × {item.quantity}</div>
             </div>

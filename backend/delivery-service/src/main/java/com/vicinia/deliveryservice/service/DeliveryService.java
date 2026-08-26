@@ -2,6 +2,7 @@ package com.vicinia.deliveryservice.service;
 
 import com.vicinia.deliveryservice.domain.DeliveryPartner;
 import com.vicinia.deliveryservice.domain.DeliveryTask;
+import com.vicinia.deliveryservice.domain.DeliveryTaskStatus;
 import com.vicinia.deliveryservice.exception.DeliveryPartnerNotFoundException;
 import com.vicinia.deliveryservice.exception.DeliveryTaskNotFoundException;
 import com.vicinia.deliveryservice.exception.ForbiddenException;
@@ -72,6 +73,20 @@ public class DeliveryService {
     }
 
     // --- task lifecycle ---
+
+    private static final List<DeliveryTaskStatus> ACTIVE_TASK_STATUSES =
+            List.of(DeliveryTaskStatus.ASSIGNED, DeliveryTaskStatus.ACCEPTED, DeliveryTaskStatus.PICKED_UP);
+
+    /**
+     * The rider's own currently-active task(s), if any — lets the delivery
+     * app poll for a fresh assignment and auto-load it instead of relying
+     * only on the "New pickup assigned" notification's deep link or the
+     * rider typing an order ID in by hand.
+     */
+    public List<DeliveryTask> myActiveTasks(UUID userId) {
+        DeliveryPartner partner = getByUserId(userId);
+        return taskRepository.findByPartnerIdAndStatusInOrderByAssignedAtDesc(partner.getId(), ACTIVE_TASK_STATUSES);
+    }
 
     /** Idempotent on orderId — a replayed order.ready is a safe no-op, matching every other Kafka-driven idempotency in this project. */
     public void createAndAssign(UUID orderId, UUID merchantId, Double latitude, Double longitude) {

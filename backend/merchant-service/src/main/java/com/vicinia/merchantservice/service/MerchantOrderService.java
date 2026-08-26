@@ -27,8 +27,17 @@ public class MerchantOrderService {
         this.eventPublisher = eventPublisher;
     }
 
+    /**
+     * The merchant's action queue: PENDING_ACCEPTANCE (needs accept/reject)
+     * and ACCEPTED (needs mark-ready) both belong here, since both still
+     * need something from the merchant. PENDING_ACCEPTANCE alone (the
+     * original shape here) meant an order vanished from every merchant's
+     * queue the instant they accepted it, with no way back to it to ever
+     * mark it ready for pickup.
+     */
     public List<MerchantOrderTask> pending(UUID ownerUserId) {
-        return taskRepository.findByMerchantIdAndStatusOrderByCreatedAtAsc(ownerUserId, OrderTaskStatus.PENDING_ACCEPTANCE);
+        return taskRepository.findByMerchantIdAndStatusInOrderByCreatedAtAsc(
+                ownerUserId, List.of(OrderTaskStatus.PENDING_ACCEPTANCE, OrderTaskStatus.ACCEPTED));
     }
 
     public MerchantOrderTask accept(UUID ownerUserId, UUID orderId) {

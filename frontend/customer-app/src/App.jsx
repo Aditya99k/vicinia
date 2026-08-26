@@ -1,9 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleRoute from './components/RoleRoute';
 import AppLayout from './components/AppLayout';
+import { homePath } from './utils/roles';
 
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -36,6 +37,12 @@ import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminSettlementsPage from './pages/admin/AdminSettlementsPage';
 
+/** Any unmatched path (a stale bookmark, a 404) lands on the account's own home, not always customer's — same reasoning as RoleRoute's own redirect. */
+function FallbackRedirect() {
+  const { auth, isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? homePath(auth) : '/login'} replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -53,17 +60,19 @@ export default function App() {
               }
             >
               {/* Customer */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/store/:merchantId" element={<StorePage />} />
-              <Route path="/product/:id" element={<ProductPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/orders/:id" element={<OrderDetailPage />} />
-              <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/" element={<RoleRoute role="CUSTOMER"><HomePage /></RoleRoute>} />
+              <Route path="/search" element={<RoleRoute role="CUSTOMER"><SearchPage /></RoleRoute>} />
+              <Route path="/store/:merchantId" element={<RoleRoute role="CUSTOMER"><StorePage /></RoleRoute>} />
+              <Route path="/product/:id" element={<RoleRoute role="CUSTOMER"><ProductPage /></RoleRoute>} />
+              <Route path="/cart" element={<RoleRoute role="CUSTOMER"><CartPage /></RoleRoute>} />
+              <Route path="/checkout" element={<RoleRoute role="CUSTOMER"><CheckoutPage /></RoleRoute>} />
+              <Route path="/orders" element={<RoleRoute role="CUSTOMER"><OrdersPage /></RoleRoute>} />
+              <Route path="/orders/:id" element={<RoleRoute role="CUSTOMER"><OrderDetailPage /></RoleRoute>} />
+              <Route path="/wallet" element={<RoleRoute role="CUSTOMER"><WalletPage /></RoleRoute>} />
+              <Route path="/addresses" element={<RoleRoute role="CUSTOMER"><AddressesPage /></RoleRoute>} />
+
+              {/* Shared across every role */}
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/addresses" element={<AddressesPage />} />
 
               {/* Merchant */}
               <Route path="/merchant" element={<RoleRoute role="MERCHANT"><MerchantDashboardPage /></RoleRoute>} />
@@ -85,7 +94,7 @@ export default function App() {
               <Route path="/admin/settlements" element={<RoleRoute role="ADMIN"><AdminSettlementsPage /></RoleRoute>} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<FallbackRedirect />} />
           </Routes>
         </BrowserRouter>
       </CartProvider>

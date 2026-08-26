@@ -240,6 +240,22 @@ public class OrderService {
     }
 
     /**
+     * Same lookup as getById, scoped by merchantId instead of userId — the
+     * merchant's own order-queue view (Stage 18's merchant dashboard photos
+     * fix) needs full item detail that MerchantOrderTask deliberately never
+     * carries (see that entity's class comment). merchantId here is the
+     * caller's own X-User-Id, same ID-namespace correlation order.merchantId
+     * already uses everywhere else (cart/inventory).
+     */
+    public Order getByIdForMerchant(UUID orderId, UUID merchantId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (!order.getMerchantId().equals(merchantId)) {
+            throw new ForbiddenException("This order does not belong to your store");
+        }
+        return order;
+    }
+
+    /**
      * Only reachable, pre-delivery states per BUILD_TRACKER's "cancel order
      * endpoint (pre-delivery states only)" — the transition guard itself
      * enforces this (CREATED/CONFIRMED/PREPARING -> CANCELLED is legal,

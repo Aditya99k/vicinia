@@ -1,10 +1,9 @@
 /**
- * delivery-service exposes no "list my assigned tasks" endpoint (a task is
- * only reachable by orderId, via accept/reject/picked-up/delivered) and
- * notification-service has no delivery-assignment consumer — so there is
- * no server-side signal a partner can poll to discover a new task. This
- * keeps a small local log of orders this device has acted on, purely for
- * the History screen; it's not a substitute for a real task inbox.
+ * DeliveryHomePage now polls GET /api/delivery/tasks/mine as the real
+ * source of truth for "do I have an active task" (Stage 18 bugfix — that
+ * endpoint didn't used to exist). This local log remains purely for the
+ * History screen, and as a same-device fallback the moment the page loads,
+ * before the first poll has landed.
  */
 const KEY = 'vicinia_delivery_history';
 

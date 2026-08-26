@@ -12,4 +12,6 @@ public interface MerchantOrderTaskRepository extends JpaRepository<MerchantOrder
     Optional<MerchantOrderTask> findByOrderId(UUID orderId);
 
     List<MerchantOrderTask> findByMerchantIdAndStatusOrderByCreatedAtAsc(UUID merchantId, OrderTaskStatus status);
+
+    List<MerchantOrderTask> findByMerchantIdAndStatusInOrderByCreatedAtAsc(UUID merchantId, List<OrderTaskStatus> statuses);
 }

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { acceptTask, delivered, getMe, goOffline, goOnline, pickedUp, rejectTask, updateLocation } from '../../api/delivery';
+import { acceptTask, delivered, getMe, goOffline, goOnline, myActiveTasks, pickedUp, rejectTask, updateLocation } from '../../api/delivery';
 import { getActiveTask, recordTask } from '../../utils/deliveryHistory';
 import { NavigationIcon, PackageIcon, TruckIcon } from '../../components/Icons';
 import { DeliveryIllustration } from '../../components/Illustrations';
@@ -11,6 +11,8 @@ const NEXT_ACTION = {
   ACCEPTED: { label: 'Mark picked up', fn: pickedUp, next: 'PICKED_UP' },
   PICKED_UP: { label: 'Mark delivered', fn: delivered, next: 'DELIVERED' },
 };
+
+const POLL_MS = 6000;
 
 export default function DeliveryHomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +41,32 @@ export default function DeliveryHomePage() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The real source of truth for "do I have an active task" — polls
+  // instead of depending solely on the notification deep link or a manual
+  // Order ID entry, so a fresh assignment shows up here on its own.
+  const syncActiveTask = useCallback(() => {
+    myActiveTasks()
+      .then((tasks) => {
+        if (tasks.length > 0) {
+          const t = tasks[0];
+          setActiveTask((prev) =>
+            prev?.orderId === t.orderId && prev?.status === t.status
+              ? prev
+              : { orderId: t.orderId, status: t.status, at: t.assignedAt || t.createdAt }
+          );
+        } else {
+          setActiveTask((prev) => (prev ? null : prev));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    syncActiveTask();
+    const interval = setInterval(syncActiveTask, POLL_MS);
+    return () => clearInterval(interval);
+  }, [syncActiveTask]);
 
   async function handleToggleOnline() {
     setToggling(true);
