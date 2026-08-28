@@ -190,8 +190,15 @@ class OrderEventsKafkaIntegrationTest {
 
         rawStringProducer.send(new ProducerRecord<>("payment-events", "malformed-test-key", malformed));
 
+        // 4 attempts at 2s/4s/8s backoff (@RetryableTopic on the consumer)
+        // is ~14s of scheduled delay alone, before counting the real Kafka
+        // produce/consume round trip across each of the 3 topic hops
+        // (main -> retry -> retry -> dlt) -- 30s was margin enough
+        // locally but genuinely marginal under CI's shared compute, not
+        // just theoretically flaky (seen live: failed here once, CI run
+        // 33211625951, "No records found for topic").
         ConsumerRecord<String, String> dltRecord = KafkaTestUtils.getSingleRecord(
-                rawStringConsumer, "payment-events-order-service-dlt", Duration.ofSeconds(30));
+                rawStringConsumer, "payment-events-order-service-dlt", Duration.ofSeconds(45));
 
         assertThat(dltRecord.value()).contains("\"eventId\":\"bad-1\"");
     }
