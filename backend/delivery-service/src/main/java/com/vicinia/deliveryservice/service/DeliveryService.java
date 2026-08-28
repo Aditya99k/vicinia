@@ -118,7 +118,17 @@ public class DeliveryService {
         UUID partnerId = nearest.get(0);
         task.assign(partnerId);
         taskRepository.save(task);
-        eventPublisher.publishAssigned(task.getOrderId(), partnerId);
+        // Bug: this used to publish partnerId itself — DeliveryPartner's own
+        // local PK, per riderUserIdFor's own comment above, not the
+        // account's real userId. notification-service's DeliveryAssignedConsumer
+        // records the notification against whatever value arrives here as
+        // the recipient, with no way to know it was ever the wrong id — so
+        // every single assignment notification silently filed under an id
+        // no rider's own X-User-Id could ever match. Same resolution
+        // riderUserIdFor already does, just needed here too.
+        partnerRepository.findById(partnerId)
+                .map(DeliveryPartner::getUserId)
+                .ifPresent(userId -> eventPublisher.publishAssigned(task.getOrderId(), userId));
     }
 
     public DeliveryTask accept(UUID userId, UUID orderId) {
